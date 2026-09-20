@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Calculator</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <main class="app-shell">
+        <div class="orb orb-one"></div>
+        <div class="orb orb-two"></div>
+
+        <header class="app-header">
+            <div class="heading-block">
+                <span class="eyebrow">Math workspace</span>
+                <h1>Calculator Studio</h1>
+            </div>
+
+            <div class="header-actions">
+                <span class="live-pill">Live</span>
+                <div class="status-badge">Ready</div>
+            </div>
+        </header>
+
+        <section class="control-panel">
+            <div class="field input-card regular-inputs" id="firstInputGroup">
+                <label for="firstValue">First value</label>
+                <input id="firstValue" type="text" inputmode="decimal" placeholder="0" />
+            </div>
+
+            <div class="field input-card operation-card">
+                <label for="operation">Operation</label>
+                <select id="operation">
+                    <option value="add">Addition</option>
+                    <option value="subtract">Subtraction</option>
+                    <option value="multiply">Multiplication</option>
+                    <option value="divide">Division</option>
+                    <option value="power">Power</option>
+                    <option value="modulus">Modulus</option>
+                    <option value="sqrt">Square Root</option>
+                    <option value="percent">Percentage</option>
+                    <option value="trigonometry">Trigonometry</option>
+                    <option value="polynomial">Polynomial Expression</option>
+                    <option value="wordProblem">Word Problem</option>
+                </select>
+            </div>
+
+            <div class="field input-card trigonometry-input hidden" id="trigonometryInputGroup">
+                <label for="trigFunction">Trigonometric function</label>
+                <select id="trigFunction">
+                    <option value="sin">Sine (sin)</option>
+                    <option value="cos">Cosine (cos)</option>
+                    <option value="tan">Tangent (tan)</option>
+                </select>
+                <label for="trigExpression">Trigonometry equation</label>
+                <input id="trigExpression" type="text" inputmode="text" placeholder="Example: sin(30) + cos(60)" />
+                <small>Use degrees: sin(30), cos(60), tan(45), or combine terms with + and -</small>
+            </div>
+
+            <div class="field input-card regular-inputs" id="secondInputGroup">
+                <label for="secondValue">Second value</label>
+                <input id="secondValue" type="text" inputmode="decimal" placeholder="0" />
+            </div>
+
+            <div class="field input-card polynomial-input hidden" id="polynomialInputGroup">
+                <label for="polynomialInput">Polynomial equation</label>
+                <input id="polynomialInput" type="text" placeholder="Example: x^2-5x+6=0" />
+                <small>Enter an equation, or an expression such as x^2-5x+6; x is solved automatically</small>
+            </div>
+
+            <div class="field input-card word-problem-input hidden" id="wordProblemInputGroup">
+                <label for="wordProblemInput">Word problem</label>
+                <textarea id="wordProblemInput" rows="5"
+                    placeholder="Ask maths, physics, chemistry, electronics, or computer questions"></textarea>
+                <small>Include values, units, circuit details, code, diagrams, and conditions when needed</small>
+            </div>
+        </section>
+
+        <section class="result-panel" aria-live="polite">
+            <div class="result-header">
+                <span class="result-topline">Result</span>
+                <span class="result-badge">Output</span>
+            </div>
+            <div id="resultValue" class="result-value">—</div>
+            <div id="equationText" class="equation">Enter values to calculate</div>
+            <div id="stepsText" class="steps">No steps yet.</div>
+        </section>
+    </main>
+
+    <script src="java.js" defer></script>
+</body>
+
+</html>
