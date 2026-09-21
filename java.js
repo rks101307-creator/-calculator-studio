@@ -1,187 +1,235 @@
-// ======================================================
-// CALCULATOR STUDIO
-// Normal Calculator + Trigonometry + Polynomial
-// + Gemini AI Word Problem Solver
-// ======================================================
-
-
-// ======================================================
+// =====================================================
 // ELEMENTS
-// ======================================================
+// =====================================================
 
-const firstValue = document.getElementById("firstValue");
-const secondValue = document.getElementById("secondValue");
-const operation = document.getElementById("operation");
+const firstValue =
+    document.getElementById("firstValue");
 
-const resultValue = document.getElementById("resultValue");
-const equationText = document.getElementById("equationText");
-const stepsText = document.getElementById("stepsText");
+const secondValue =
+    document.getElementById("secondValue");
+
+const operation =
+    document.getElementById("operation");
+
+const resultValue =
+    document.getElementById("resultValue");
+
+const equationText =
+    document.getElementById("equationText");
+
+const stepsText =
+    document.getElementById("stepsText");
 
 const firstGroup =
-    document.getElementById("firstInputGroup");
+    document.getElementById(
+        "firstInputGroup"
+    );
 
 const secondGroup =
-    document.getElementById("secondInputGroup");
+    document.getElementById(
+        "secondInputGroup"
+    );
 
 const trigGroup =
-    document.getElementById("trigonometryInputGroup");
+    document.getElementById(
+        "trigonometryInputGroup"
+    );
 
 const polynomialGroup =
-    document.getElementById("polynomialInputGroup");
+    document.getElementById(
+        "polynomialInputGroup"
+    );
 
 const wordGroup =
-    document.getElementById("wordProblemInputGroup");
+    document.getElementById(
+        "wordProblemInputGroup"
+    );
 
 const trigExpression =
-    document.getElementById("trigExpression");
+    document.getElementById(
+        "trigExpression"
+    );
 
 const polynomialInput =
-    document.getElementById("polynomialInput");
+    document.getElementById(
+        "polynomialInput"
+    );
 
 const wordProblemInput =
-    document.getElementById("wordProblemInput");
+    document.getElementById(
+        "wordProblemInput"
+    );
 
 
-// ======================================================
-// GEMINI DEBOUNCE TIMER
-// ======================================================
+// =====================================================
+// STATUS
+// =====================================================
 
-let wordProblemTimer = null;
+function setStatus(text) {
 
+    const status =
+        document.querySelector(
+            ".status-badge"
+        );
 
-// ======================================================
-// CHANGE OPERATION
-// ======================================================
-
-operation.addEventListener("change", updateInterface);
-
-
-function updateInterface() {
-
-    const op = operation.value;
-
-    // Hide everything
-    firstGroup.classList.add("hidden");
-    secondGroup.classList.add("hidden");
-    trigGroup.classList.add("hidden");
-    polynomialGroup.classList.add("hidden");
-    wordGroup.classList.add("hidden");
-
-
-    // Normal two-number operations
-    if (
-        op === "add" ||
-        op === "subtract" ||
-        op === "multiply" ||
-        op === "divide" ||
-        op === "power" ||
-        op === "modulus" ||
-        op === "percent"
-    ) {
-
-        firstGroup.classList.remove("hidden");
-        secondGroup.classList.remove("hidden");
-    }
-
-
-    // Square root
-    if (op === "sqrt") {
-
-        firstGroup.classList.remove("hidden");
-    }
-
-
-    // Trigonometry
-    if (op === "trigonometry") {
-
-        trigGroup.classList.remove("hidden");
-    }
-
-
-    // Polynomial
-    if (op === "polynomial") {
-
-        polynomialGroup.classList.remove("hidden");
-    }
-
-
-    // Gemini word problem
-    if (op === "wordProblem") {
-
-        wordGroup.classList.remove("hidden");
-
-        resultValue.textContent = "—";
-        equationText.textContent =
-            "Ask Gemini a mathematics, physics, chemistry, electronics, or computer science problem.";
-
-        stepsText.innerHTML =
-            "Enter your problem above.";
-    }
-
-
-    // Normal reset
-    if (op !== "wordProblem") {
-
-        resultValue.textContent = "—";
-        equationText.textContent =
-            "Enter values to calculate";
-
-        stepsText.innerHTML =
-            "No steps yet.";
+    if (status) {
+        status.textContent = text;
     }
 }
 
 
-// ======================================================
-// MAIN CALCULATOR
-// ======================================================
+// =====================================================
+// NUMBER PARSER
+// =====================================================
+
+function parseNumber(value) {
+
+    const number =
+        Number(
+            String(value)
+                .trim()
+                .replace(/,/g, "")
+        );
+
+    return Number.isFinite(number)
+        ? number
+        : null;
+}
+
+
+// =====================================================
+// FORMAT NUMBER
+// =====================================================
+
+function formatNumber(number) {
+
+    if (
+        !Number.isFinite(number)
+    ) {
+        return "Error";
+    }
+
+    return Number.isInteger(number)
+        ? String(number)
+        : Number(
+            number.toFixed(10)
+        ).toString();
+}
+
+
+// =====================================================
+// SHOW STEPS
+// =====================================================
+
+function showSteps(steps) {
+
+    if (
+        !Array.isArray(steps) ||
+        steps.length === 0
+    ) {
+
+        stepsText.innerHTML =
+            "No steps yet.";
+
+        return;
+    }
+
+
+    stepsText.innerHTML =
+        steps
+            .map(
+                (step, index) => `
+
+                <div class="step-item">
+
+                    <span class="step-number">
+                        ${index + 1}
+                    </span>
+
+                    <span class="step-text">
+                        ${escapeHtml(
+                            String(step)
+                        )}
+                    </span>
+
+                </div>
+
+            `
+            )
+            .join("");
+}
+
+
+// =====================================================
+// BASIC CALCULATOR
+// =====================================================
 
 function calculate() {
 
-    const op = operation.value;
+    const type =
+        operation.value;
 
 
-    // Word problem is handled separately
-    if (op === "wordProblem") {
+    // Word problem
+    if (
+        type === "wordProblem"
+    ) {
 
         solveWordProblem();
+
         return;
     }
 
 
     // Polynomial
-    if (op === "polynomial") {
+    if (
+        type === "polynomial"
+    ) {
 
         solvePolynomial();
+
         return;
     }
 
 
     // Trigonometry
-    if (op === "trigonometry") {
+    if (
+        type === "trigonometry"
+    ) {
 
         solveTrigonometry();
+
         return;
     }
 
 
-    // Square root
-    if (op === "sqrt") {
-
-        solveSquareRoot();
-        return;
-    }
+    const a =
+        parseNumber(
+            firstValue.value
+        );
 
 
-    // Read numbers
-    const a = Number(firstValue.value);
-    const b = Number(secondValue.value);
+    const b =
+        parseNumber(
+            secondValue.value
+        );
 
 
-    if (!Number.isFinite(a) ||
-        !Number.isFinite(b)) {
+    if (
+        a === null
+    ) {
 
-        showError("Enter both numbers.");
+        resultValue.textContent =
+            "—";
+
+        equationText.textContent =
+            "Enter a valid first value.";
+
+        stepsText.textContent =
+            "Waiting for input.";
+
+        setStatus("Ready");
+
         return;
     }
 
@@ -191,479 +239,892 @@ function calculate() {
     let steps;
 
 
-    switch (op) {
+    // ==========================================
+    // ADDITION
+    // ==========================================
 
+    if (
+        type === "add"
+    ) {
 
-        // ==============================================
-        // ADDITION
-        // ==============================================
-
-        case "add":
-
-            result = a + b;
-
-            equation =
-                `${a} + ${b} = ${result}`;
-
-            steps = [
-                `First value = ${a}`,
-                `Second value = ${b}`,
-                `Add ${a} + ${b}`,
-                `Answer = ${result}`
-            ];
-
-            break;
-
-
-        // ==============================================
-        // SUBTRACTION
-        // ==============================================
-
-        case "subtract":
-
-            result = a - b;
-
-            equation =
-                `${a} − ${b} = ${result}`;
-
-            steps = [
-                `First value = ${a}`,
-                `Second value = ${b}`,
-                `Subtract ${a} − ${b}`,
-                `Answer = ${result}`
-            ];
-
-            break;
-
-
-        // ==============================================
-        // MULTIPLICATION
-        // ==============================================
-
-        case "multiply":
-
-            result = a * b;
-
-            equation =
-                `${a} × ${b} = ${result}`;
-
-            steps = [
-                `First value = ${a}`,
-                `Second value = ${b}`,
-                `Multiply ${a} × ${b}`,
-                `Answer = ${result}`
-            ];
-
-            break;
-
-
-        // ==============================================
-        // DIVISION
-        // ==============================================
-
-        case "divide":
-
-            if (b === 0) {
-
-                showError(
-                    "Cannot divide by zero."
-                );
-
-                return;
-            }
-
-            result = a / b;
-
-            equation =
-                `${a} ÷ ${b} = ${result}`;
-
-            steps = [
-                `Dividend = ${a}`,
-                `Divisor = ${b}`,
-                `Divide ${a} ÷ ${b}`,
-                `Answer = ${result}`
-            ];
-
-            break;
-
-
-        // ==============================================
-        // POWER
-        // ==============================================
-
-        case "power":
-
-            result = Math.pow(a, b);
-
-            equation =
-                `${a} ^ ${b} = ${result}`;
-
-            steps = [
-                `Base = ${a}`,
-                `Exponent = ${b}`,
-                `Calculate ${a} raised to ${b}`,
-                `Answer = ${result}`
-            ];
-
-            break;
-
-
-        // ==============================================
-        // MODULUS
-        // ==============================================
-
-        case "modulus":
-
-            if (b === 0) {
-
-                showError(
-                    "Cannot calculate modulus by zero."
-                );
-
-                return;
-            }
-
-            result = a % b;
-
-            equation =
-                `${a} mod ${b} = ${result}`;
-
-            steps = [
-                `${a} ÷ ${b}`,
-                `Find the remainder`,
-                `Answer = ${result}`
-            ];
-
-            break;
-
-
-        // ==============================================
-        // PERCENTAGE
-        // ==============================================
-
-        case "percent":
-
-            result = (a / 100) * b;
-
-            equation =
-                `${a}% of ${b} = ${result}`;
-
-            steps = [
-                `${a}% = ${a} ÷ 100`,
-                `(${a} ÷ 100) × ${b}`,
-                `Answer = ${result}`
-            ];
-
-            break;
-
-
-        default:
-
-            showError(
-                "Select an operation."
-            );
-
+        if (b === null) {
+            showSecondRequired();
             return;
+        }
+
+        result =
+            a + b;
+
+        equation =
+            `${a} + ${b} = ${formatNumber(result)}`;
+
+        steps = [
+
+            `First value = ${a}`,
+
+            `Second value = ${b}`,
+
+            `Add the two values.`,
+
+            `${a} + ${b} = ${formatNumber(result)}`
+        ];
     }
 
 
-    showResult(
-        result,
-        equation,
+    // ==========================================
+    // SUBTRACTION
+    // ==========================================
+
+    else if (
+        type === "subtract"
+    ) {
+
+        if (b === null) {
+            showSecondRequired();
+            return;
+        }
+
+        result =
+            a - b;
+
+        equation =
+            `${a} − ${b} = ${formatNumber(result)}`;
+
+        steps = [
+
+            `First value = ${a}`,
+
+            `Second value = ${b}`,
+
+            `Subtract the second value from the first.`,
+
+            `${a} − ${b} = ${formatNumber(result)}`
+        ];
+    }
+
+
+    // ==========================================
+    // MULTIPLICATION
+    // ==========================================
+
+    else if (
+        type === "multiply"
+    ) {
+
+        if (b === null) {
+            showSecondRequired();
+            return;
+        }
+
+        result =
+            a * b;
+
+        equation =
+            `${a} × ${b} = ${formatNumber(result)}`;
+
+        steps = [
+
+            `First value = ${a}`,
+
+            `Second value = ${b}`,
+
+            `Multiply the two values.`,
+
+            `${a} × ${b} = ${formatNumber(result)}`
+        ];
+    }
+
+
+    // ==========================================
+    // DIVISION
+    // ==========================================
+
+    else if (
+        type === "divide"
+    ) {
+
+        if (b === null) {
+            showSecondRequired();
+            return;
+        }
+
+
+        if (
+            b === 0
+        ) {
+
+            resultValue.textContent =
+                "Error";
+
+            equationText.textContent =
+                "Division by zero is not allowed.";
+
+            stepsText.textContent =
+                "The second value cannot be zero.";
+
+            return;
+        }
+
+
+        result =
+            a / b;
+
+        equation =
+            `${a} ÷ ${b} = ${formatNumber(result)}`;
+
+        steps = [
+
+            `First value = ${a}`,
+
+            `Second value = ${b}`,
+
+            `Divide the first value by the second.`,
+
+            `${a} ÷ ${b} = ${formatNumber(result)}`
+        ];
+    }
+
+
+    // ==========================================
+    // POWER
+    // ==========================================
+
+    else if (
+        type === "power"
+    ) {
+
+        if (b === null) {
+            showSecondRequired();
+            return;
+        }
+
+        result =
+            Math.pow(a, b);
+
+        equation =
+            `${a}^${b} = ${formatNumber(result)}`;
+
+        steps = [
+
+            `Base = ${a}`,
+
+            `Exponent = ${b}`,
+
+            `Calculate ${a} raised to the power ${b}.`,
+
+            `${a}^${b} = ${formatNumber(result)}`
+        ];
+    }
+
+
+    // ==========================================
+    // MODULUS
+    // ==========================================
+
+    else if (
+        type === "modulus"
+    ) {
+
+        if (b === null) {
+            showSecondRequired();
+            return;
+        }
+
+
+        if (b === 0) {
+
+            resultValue.textContent =
+                "Error";
+
+            equationText.textContent =
+                "Modulus by zero is not allowed.";
+
+            stepsText.textContent =
+                "The second value cannot be zero.";
+
+            return;
+        }
+
+
+        result =
+            a % b;
+
+        equation =
+            `${a} mod ${b} = ${formatNumber(result)}`;
+
+        steps = [
+
+            `First value = ${a}`,
+
+            `Second value = ${b}`,
+
+            `Find the remainder after division.`,
+
+            `${a} mod ${b} = ${formatNumber(result)}`
+        ];
+    }
+
+
+    // ==========================================
+    // SQUARE ROOT
+    // ==========================================
+
+    else if (
+        type === "sqrt"
+    ) {
+
+        if (
+            a < 0
+        ) {
+
+            resultValue.textContent =
+                "Error";
+
+            equationText.textContent =
+                "Square root of a negative number is not real.";
+
+            stepsText.textContent =
+                "Enter a value greater than or equal to zero.";
+
+            return;
+        }
+
+
+        result =
+            Math.sqrt(a);
+
+        equation =
+            `√${a} = ${formatNumber(result)}`;
+
+        steps = [
+
+            `Number = ${a}`,
+
+            `Take the square root.`,
+
+            `√${a} = ${formatNumber(result)}`
+        ];
+    }
+
+
+    // ==========================================
+    // PERCENTAGE
+    // ==========================================
+
+    else if (
+        type === "percent"
+    ) {
+
+        if (b === null) {
+            showSecondRequired();
+            return;
+        }
+
+        result =
+            (a / 100) * b;
+
+        equation =
+            `${a}% of ${b} = ${formatNumber(result)}`;
+
+        steps = [
+
+            `${a}% = ${a} / 100`,
+
+            `${a} / 100 = ${a / 100}`,
+
+            `${a / 100} × ${b} = ${formatNumber(result)}`
+        ];
+    }
+
+
+    else {
+
+        return;
+    }
+
+
+    // ==========================================
+    // DISPLAY RESULT
+    // ==========================================
+
+    resultValue.textContent =
+        formatNumber(result);
+
+    equationText.textContent =
+        equation;
+
+    showSteps(
         steps
+    );
+
+    setStatus(
+        "Solved"
     );
 }
 
 
-// ======================================================
-// SQUARE ROOT
-// ======================================================
+// =====================================================
+// SECOND VALUE REQUIRED
+// =====================================================
 
-function solveSquareRoot() {
+function showSecondRequired() {
 
-    const value =
-        Number(firstValue.value);
+    resultValue.textContent =
+        "—";
+
+    equationText.textContent =
+        "Enter the second value.";
+
+    stepsText.textContent =
+        "Waiting for second value.";
+
+    setStatus("Ready");
+}
 
 
-    if (!Number.isFinite(value)) {
+// =====================================================
+// TRIGONOMETRY
+// =====================================================
 
-        showError(
-            "Enter a valid number."
-        );
+function solveTrigonometry() {
+
+    const expression =
+        trigExpression.value.trim();
+
+
+    if (!expression) {
+
+        resultValue.textContent =
+            "—";
+
+        equationText.textContent =
+            "Enter a trigonometry expression.";
+
+        stepsText.textContent =
+            "Example: sin(30) + cos(60)";
 
         return;
     }
 
 
-    if (value < 0) {
+    try {
 
-        showError(
-            "Cannot calculate a real square root of a negative number."
+        const result =
+            evaluateTrigExpression(
+                expression
+            );
+
+
+        resultValue.textContent =
+            formatNumber(result);
+
+
+        equationText.textContent =
+            `${expression} = ${formatNumber(result)}`;
+
+
+        showSteps([
+
+            `Expression = ${expression}`,
+
+            `Angles are interpreted in degrees.`,
+
+            `Calculate the trigonometric values.`,
+
+            `Answer = ${formatNumber(result)}`
+        ]);
+
+
+        setStatus("Solved");
+
+    } catch (error) {
+
+        resultValue.textContent =
+            "Error";
+
+        equationText.textContent =
+            error.message;
+
+        stepsText.textContent =
+            "Check the trigonometry expression.";
+
+        setStatus("Error");
+    }
+}
+
+
+// =====================================================
+// TRIG EXPRESSION EVALUATOR
+// =====================================================
+
+function evaluateTrigExpression(
+    expression
+) {
+
+    let exp =
+        expression
+            .toLowerCase()
+            .replace(/\s+/g, "");
+
+
+    exp =
+        exp.replace(
+            /sin\(([-+]?\d*\.?\d+)\)/g,
+            (_, value) =>
+                `Math.sin(${Number(value)}*Math.PI/180)`
         );
 
-        return;
+
+    exp =
+        exp.replace(
+            /cos\(([-+]?\d*\.?\d+)\)/g,
+            (_, value) =>
+                `Math.cos(${Number(value)}*Math.PI/180)`
+        );
+
+
+    exp =
+        exp.replace(
+            /tan\(([-+]?\d*\.?\d+)\)/g,
+            (_, value) =>
+                `Math.tan(${Number(value)}*Math.PI/180)`
+        );
+
+
+    if (
+        !/^[0-9+\-*/().\s*MathPI]+$/.test(
+            exp
+        )
+    ) {
+
+        throw new Error(
+            "Invalid trigonometry expression."
+        );
     }
 
 
     const result =
-        Math.sqrt(value);
+        Function(
+            `"use strict"; return (${exp})`
+        )();
 
 
-    showResult(
+    if (
+        !Number.isFinite(result)
+    ) {
 
-        result,
+        throw new Error(
+            "Invalid trigonometry result."
+        );
+    }
 
-        `√${value} = ${format(result)}`,
 
-        [
-            `Number = ${value}`,
-            `Take the square root of ${value}`,
-            `√${value} = ${format(result)}`,
-            `Answer = ${format(result)}`
-        ]
-    );
+    return result;
 }
 
 
-// ======================================================
-// GEMINI AI WORD PROBLEM SOLVER
-// ======================================================
+// =====================================================
+// POLYNOMIAL SOLVER
+// =====================================================
 
-async function solveWordProblem() {
+function solvePolynomial() {
 
-    const question = wordProblemInput.value.trim();
+    const expression =
+        polynomialInput.value.trim();
 
-    // Empty input
-    if (!question) {
 
-        resultValue.textContent = "—";
+    if (!expression) {
+
+        resultValue.textContent =
+            "—";
 
         equationText.textContent =
-            "Enter a problem to solve.";
+            "Enter a polynomial.";
 
-        stepsText.innerHTML =
-            "No problem entered.";
-
-        const status =
-            document.querySelector(".status-badge");
-
-        if (status) {
-            status.textContent = "Ready";
-        }
+        stepsText.textContent =
+            "Example: x^2 - 5x + 6 = 0";
 
         return;
     }
 
-    // Loading state
-    const status =
-        document.querySelector(".status-badge");
 
-    if (status) {
-        status.textContent = "Thinking...";
+    try {
+
+        const normalized =
+            expression
+                .replace(/\s+/g, "")
+                .replace(/\^/g, "**");
+
+
+        // Quadratic:
+        // ax² + bx + c = 0
+
+        const match =
+            normalized.match(
+                /^([+-]?\d*\.?\d*)x\*\*2([+-]\d*\.?\d*)x([+-]\d*\.?\d*)=0$/
+            );
+
+
+        if (!match) {
+
+            throw new Error(
+                "Currently enter a quadratic like x^2-5x+6=0."
+            );
+        }
+
+
+        let a =
+            match[1];
+
+        let b =
+            match[2];
+
+        let c =
+            match[3];
+
+
+        if (
+            a === "" ||
+            a === "+"
+        ) {
+            a = 1;
+        }
+
+        else if (
+            a === "-"
+        ) {
+            a = -1;
+        }
+
+        else {
+            a = Number(a);
+        }
+
+
+        b =
+            b === "+" ||
+            b === ""
+                ? 1
+                : b === "-"
+                    ? -1
+                    : Number(b);
+
+
+        c =
+            c === "+" ||
+            c === ""
+                ? 0
+                : Number(c);
+
+
+        const discriminant =
+            b * b -
+            4 * a * c;
+
+
+        if (
+            discriminant < 0
+        ) {
+
+            resultValue.textContent =
+                "No real roots";
+
+            equationText.textContent =
+                `D = ${discriminant}`;
+
+            showSteps([
+
+                `a = ${a}`,
+
+                `b = ${b}`,
+
+                `c = ${c}`,
+
+                `D = b² − 4ac`,
+
+                `D = ${discriminant}`,
+
+                `Since D < 0, there are no real roots.`
+            ]);
+
+            return;
+        }
+
+
+        const x1 =
+            (
+                -b +
+                Math.sqrt(discriminant)
+            ) /
+            (2 * a);
+
+
+        const x2 =
+            (
+                -b -
+                Math.sqrt(discriminant)
+            ) /
+            (2 * a);
+
+
+        resultValue.textContent =
+            `x = ${formatNumber(x1)}, ${formatNumber(x2)}`;
+
+
+        equationText.textContent =
+            `${expression}`;
+
+
+        showSteps([
+
+            `a = ${a}`,
+
+            `b = ${b}`,
+
+            `c = ${c}`,
+
+            `D = b² − 4ac`,
+
+            `D = ${discriminant}`,
+
+            `x = (−b ± √D) / 2a`,
+
+            `x₁ = ${formatNumber(x1)}`,
+
+            `x₂ = ${formatNumber(x2)}`
+        ]);
+
+
+        setStatus("Solved");
+
+    } catch (error) {
+
+        resultValue.textContent =
+            "Error";
+
+        equationText.textContent =
+            error.message;
+
+        stepsText.textContent =
+            "Check your polynomial.";
+
+        setStatus("Error");
     }
+}
+
+
+// =====================================================
+// WORD PROBLEM SOLVER
+// =====================================================
+
+async function solveWordProblem() {
+
+    const question =
+        wordProblemInput.value.trim();
+
+
+    if (!question) {
+
+        resultValue.textContent =
+            "—";
+
+        equationText.textContent =
+            "Enter a problem to solve.";
+
+        stepsText.textContent =
+            "No problem entered.";
+
+        return;
+    }
+
+
+    setStatus("AI");
+
 
     resultValue.textContent =
         "Solving...";
 
+
     equationText.textContent =
         "Gemini is analyzing your problem...";
 
+
     stepsText.innerHTML = `
+
         <div class="step-item">
-            <span class="step-number">⏳</span>
-            <span class="step-text">
-                Identifying subject, values,
-                formula and required answer...
+
+            <span class="step-number">
+                ⏳
             </span>
+
+            <span class="step-text">
+                Sending problem to Gemini...
+            </span>
+
         </div>
+
     `;
+
 
     try {
 
-        const response = await fetch("/api/solve", {
+        const response =
+            await fetch(
+                "/api/solve",
+                {
 
-            method: "POST",
+                    method: "POST",
 
-            headers: {
-                "Content-Type": "application/json"
-            },
+                    headers: {
 
-            body: JSON.stringify({
-                problem: question
-            })
-        });
+                        "Content-Type":
+                            "application/json"
+                    },
 
-        let data;
+                    body:
+                        JSON.stringify({
 
-        try {
-
-            data = await response.json();
-
-        } catch {
-
-            throw new Error(
-                "Server returned an invalid response."
+                            problem:
+                                question
+                        })
+                }
             );
-        }
 
-        console.log("GEMINI SERVER RESPONSE:", data);
+
+        const data =
+            await response.json();
+
+
+        console.log(
+            "SERVER RESPONSE:",
+            data
+        );
+
 
         if (!response.ok) {
 
             throw new Error(
                 data.error ||
-                "Gemini could not solve the problem."
+                "Server could not solve the problem."
             );
         }
 
-        if (data.error) {
 
-            throw new Error(data.error);
-        }
-
-        /*
-         * The server normally returns:
-         *
-         * {
-         *   success: true,
-         *   result: {
-         *      answer: "...",
-         *      equation: "...",
-         *      steps: [...]
-         *   }
-         * }
-         */
+        // ==========================================
+        // GET RESULT
+        // ==========================================
 
         const result =
-            data.result || data;
+            data.result ||
+            data;
 
-        if (!result) {
 
-            throw new Error(
-                "No result returned from Gemini."
-            );
-        }
+        console.log(
+            "PARSED RESULT:",
+            result
+        );
 
-        // -----------------------------------------
+
+        // ==========================================
         // ANSWER
-        // -----------------------------------------
+        // ==========================================
 
         const answer =
             result.answer ||
             result.finalAnswer ||
             result.final_answer ||
             result.solution ||
-            result.result ||
-            result.calculation ||
             "";
 
-        // -----------------------------------------
-        // EQUATION / FORMULA
-        // -----------------------------------------
 
-        const equation =
+        if (!answer) {
+
+            throw new Error(
+                "No final answer returned."
+            );
+        }
+
+
+        resultValue.textContent =
+            answer;
+
+
+        // ==========================================
+        // EQUATION
+        // ==========================================
+
+        equationText.textContent =
             result.equation ||
             result.formula ||
-            "";
+            "AI solution";
 
-        // -----------------------------------------
+
+        // ==========================================
         // STEPS
-        // -----------------------------------------
+        // ==========================================
 
         let steps =
-            result.steps || [];
+            result.steps ||
+            [];
 
-        if (!Array.isArray(steps)) {
+
+        if (
+            !Array.isArray(steps)
+        ) {
 
             steps = [
                 String(steps)
             ];
         }
 
-        // -----------------------------------------
-        // SHOW ANSWER
-        // -----------------------------------------
 
-        if (answer) {
+        // Use calculation if steps are missing
+        if (
+            steps.length === 0 &&
+            result.calculation
+        ) {
 
-            resultValue.textContent =
-                answer;
-
-        } else {
-
-            resultValue.textContent =
-                "No final answer returned.";
+            steps =
+                String(
+                    result.calculation
+                )
+                .split(/\r?\n/)
+                .filter(Boolean);
         }
 
-        // -----------------------------------------
-        // SHOW EQUATION
-        // -----------------------------------------
 
-        equationText.textContent =
-            equation ||
-            "No equation provided.";
+        showSteps(
+            steps
+        );
 
-        // -----------------------------------------
-        // SHOW STEPS
-        // -----------------------------------------
 
-        if (steps.length > 0) {
-
-            stepsText.innerHTML =
-                steps.map(
-                    (step, index) => {
-
-                        return `
-                            <div class="step-item">
-
-                                <span class="step-number">
-                                    ${index + 1}
-                                </span>
-
-                                <span class="step-text">
-                                    ${escapeHtml(
-                                        String(step)
-                                    )}
-                                </span>
-
-                            </div>
-                        `;
-                    }
-                ).join("");
-
-        } else {
-
-            stepsText.innerHTML =
-                `<div class="step-item">
-                    <span class="step-text">
-                        No detailed steps returned.
-                    </span>
-                </div>`;
-        }
-
-        // -----------------------------------------
+        // ==========================================
         // STATUS
-        // -----------------------------------------
+        // ==========================================
 
-        if (status) {
-            status.textContent = "Solved";
-        }
+        setStatus(
+            "Solved"
+        );
+
 
     } catch (error) {
 
         console.error(
-            "Gemini error:",
+            "Solve error:",
             error
         );
+
 
         resultValue.textContent =
             "Error";
 
+
         equationText.textContent =
-            error.message ||
-            "Unable to connect to Gemini.";
+            error.message;
+
 
         stepsText.innerHTML = `
+
             <div class="step-item">
 
                 <span class="step-number">
@@ -672,801 +1133,172 @@ async function solveWordProblem() {
 
                 <span class="step-text">
                     ${escapeHtml(
-                        error.message ||
-                        "Unable to solve the problem."
+                        error.message
                     )}
                 </span>
 
             </div>
+
         `;
 
-        if (status) {
-            status.textContent = "Error";
-        }
-    }
-}
 
-
-// ======================================================
-// DISPLAY GEMINI RESULT
-// ======================================================
-
-function displayGeminiResult(data) {
-
-    const subject =
-        data.subject || "General";
-
-
-    const topic =
-        data.topic || "";
-
-
-    const answer =
-        data.answer ||
-        "No final answer returned.";
-
-
-    const formula =
-        data.formula || "";
-
-
-    const equation =
-        data.equation || "";
-
-
-    const given =
-        Array.isArray(data.given)
-            ? data.given
-            : [];
-
-
-    const required =
-        Array.isArray(data.required)
-            ? data.required
-            : [];
-
-
-    const assumptions =
-        Array.isArray(data.assumptions)
-            ? data.assumptions
-            : [];
-
-
-    const steps =
-        Array.isArray(data.steps)
-            ? data.steps
-            : [];
-
-
-    const calculation =
-        data.calculation || "";
-
-
-    const checks =
-        Array.isArray(data.checks)
-            ? data.checks
-            : [];
-
-
-    const warning =
-        data.warning || "";
-
-
-    // ==============================================
-    // FINAL ANSWER
-    // ==============================================
-
-    resultValue.textContent =
-        answer;
-
-
-    // ==============================================
-    // EQUATION AREA
-    // ==============================================
-
-    let equationHTML = "";
-
-
-    if (subject) {
-
-        equationHTML += `
-            <strong>Subject:</strong>
-            ${escapeHTML(subject)}
-        `;
-    }
-
-
-    if (topic) {
-
-        equationHTML += `
-            <br>
-            <strong>Topic:</strong>
-            ${escapeHTML(topic)}
-        `;
-    }
-
-
-    if (equation) {
-
-        equationHTML += `
-            <br>
-            <strong>Equation:</strong>
-            ${formatAIText(equation)}
-        `;
-    }
-
-
-    if (formula) {
-
-        equationHTML += `
-            <br>
-            <strong>Formula:</strong>
-            ${formatAIText(formula)}
-        `;
-    }
-
-
-    equationText.innerHTML =
-        equationHTML ||
-        "Gemini solved the problem.";
-
-
-    // ==============================================
-    // BUILD SOLUTION
-    // ==============================================
-
-    const allSteps = [];
-
-
-    // Given
-    if (given.length > 0) {
-
-        allSteps.push(`
-            <strong>Given:</strong>
-
-            <br>
-
-            ${given
-                .map(item =>
-                    `• ${escapeHTML(item)}`
-                )
-                .join("<br>")}
-        `);
-    }
-
-
-    // Required
-    if (required.length > 0) {
-
-        allSteps.push(`
-            <strong>Required:</strong>
-
-            <br>
-
-            ${required
-                .map(item =>
-                    `• ${escapeHTML(item)}`
-                )
-                .join("<br>")}
-        `);
-    }
-
-
-    // Assumptions
-    if (assumptions.length > 0) {
-
-        allSteps.push(`
-            <strong>Assumptions:</strong>
-
-            <br>
-
-            ${assumptions
-                .map(item =>
-                    `• ${escapeHTML(item)}`
-                )
-                .join("<br>")}
-        `);
-    }
-
-
-    // Formula
-    if (formula) {
-
-        allSteps.push(`
-            <strong>Formula / Principle:</strong>
-
-            <br>
-
-            ${formatAIText(formula)}
-        `);
-    }
-
-
-    // Calculation
-    if (calculation) {
-
-        allSteps.push(`
-            <strong>Calculation:</strong>
-
-            <br>
-
-            ${formatAIText(calculation)}
-        `);
-    }
-
-
-    // Steps
-    steps.forEach(step => {
-
-        allSteps.push(
-            formatAIText(step)
-        );
-    });
-
-
-    // Checks
-    if (checks.length > 0) {
-
-        allSteps.push(`
-            <strong>Check:</strong>
-
-            <br>
-
-            ${checks
-                .map(item =>
-                    `✓ ${escapeHTML(item)}`
-                )
-                .join("<br>")}
-        `);
-    }
-
-
-    // Warning
-    if (warning) {
-
-        allSteps.push(`
-            <strong>Note:</strong>
-
-            <br>
-
-            ${escapeHTML(warning)}
-        `);
-    }
-
-
-    // ==============================================
-    // DISPLAY STEPS
-    // ==============================================
-
-    if (allSteps.length === 0) {
-
-        stepsText.innerHTML =
-            "No detailed steps returned.";
-
-    } else {
-
-        stepsText.innerHTML =
-            allSteps
-                .map((step, index) => `
-
-                    <div class="step-item">
-
-                        <span class="step-number">
-                            ${index + 1}
-                        </span>
-
-                        <span class="step-text">
-                            ${step}
-                        </span>
-
-                    </div>
-
-                `)
-                .join("");
-    }
-
-
-    // ==============================================
-    // STATUS
-    // ==============================================
-
-    if (statusElement()) {
-
-        statusElement().textContent =
-            "Solved";
-    }
-}
-
-
-// ======================================================
-// TRIGONOMETRY
-// ======================================================
-
-function solveTrigonometry() {
-
-    let expression =
-        trigExpression.value.trim();
-
-
-    if (!expression) {
-
-        showError(
-            "Enter a trigonometry expression."
-        );
-
-        return;
-    }
-
-
-    try {
-
-        let jsExpression =
-            expression
-                .replace(/π/g, "Math.PI")
-                .replace(
-                    /sin\s*\(/gi,
-                    "Math.sin(Math.PI/180*("
-                )
-                .replace(
-                    /cos\s*\(/gi,
-                    "Math.cos(Math.PI/180*("
-                )
-                .replace(
-                    /tan\s*\(/gi,
-                    "Math.tan(Math.PI/180*("
-                );
-
-
-        // Close parentheses added to degree functions
-        jsExpression =
-            fixTrigParentheses(
-                jsExpression
-            );
-
-
-        const result =
-            Function(
-                `"use strict"; return ${jsExpression}`
-            )();
-
-
-        if (!Number.isFinite(result)) {
-
-            throw new Error();
-        }
-
-
-        showResult(
-
-            result,
-
-            `${expression} = ${format(result)}`,
-
-            [
-                "Angles are interpreted in degrees.",
-                `Evaluate ${expression}.`,
-                `Answer = ${format(result)}`
-            ]
-        );
-
-
-    } catch {
-
-        showError(
-            "Invalid trigonometry expression."
+        setStatus(
+            "Error"
         );
     }
 }
 
 
-// ======================================================
-// TRIGONOMETRY PARENTHESIS HELPER
-// ======================================================
+// =====================================================
+// UPDATE INPUT VISIBILITY
+// =====================================================
 
-function fixTrigParentheses(expression) {
+function updateFields() {
 
-    /*
-       This helper handles common inputs such as:
+    const type =
+        operation.value;
 
-       sin(30)
-       cos(60)
-       tan(45)
-    */
 
-    expression =
-        expression.replace(
-            /Math\.sin\(Math\.PI\/180\*\(([^()]*)\)/g,
-            "Math.sin(Math.PI/180*($1))"
+    // Hide everything first
+
+    firstGroup.classList.add(
+        "hidden"
+    );
+
+    secondGroup.classList.add(
+        "hidden"
+    );
+
+    trigGroup.classList.add(
+        "hidden"
+    );
+
+    polynomialGroup.classList.add(
+        "hidden"
+    );
+
+    wordGroup.classList.add(
+        "hidden"
+    );
+
+
+    // ==========================================
+    // TRIGONOMETRY
+    // ==========================================
+
+    if (
+        type === "trigonometry"
+    ) {
+
+        trigGroup.classList.remove(
+            "hidden"
         );
 
-    expression =
-        expression.replace(
-            /Math\.cos\(Math\.PI\/180\*\(([^()]*)\)/g,
-            "Math.cos(Math.PI/180*($1))"
-        );
-
-    expression =
-        expression.replace(
-            /Math\.tan\(Math\.PI\/180\*\(([^()]*)\)/g,
-            "Math.tan(Math.PI/180*($1))"
-        );
-
-    return expression;
-}
-
-
-// ======================================================
-// POLYNOMIAL SOLVER
-// ======================================================
-
-function solvePolynomial() {
-
-    let equation =
-        polynomialInput.value
-            .trim()
-            .replace(/\s/g, "")
-            .replace(/−/g, "-");
-
-
-    if (!equation) {
-
-        showError(
-            "Enter a polynomial."
+        setStatus(
+            "Ready"
         );
 
         return;
     }
 
 
-    // Remove = 0 if provided
-    if (equation.includes("=")) {
+    // ==========================================
+    // POLYNOMIAL
+    // ==========================================
 
-        equation =
-            equation.split("=")[0];
-    }
+    if (
+        type === "polynomial"
+    ) {
 
-
-    /*
-       Supported format:
-
-       x^2-5x+6
-
-       2x^2+3x-5
-
-       x^2+x-2
-    */
-
-    const match =
-        equation.match(
-            /^([+-]?\d*\.?\d*)x\^2([+-]?\d*\.?\d*)x([+-]?\d*\.?\d*)$/
+        polynomialGroup.classList.remove(
+            "hidden"
         );
 
-
-    if (!match) {
-
-        showError(
-            "Use quadratic format like: x^2-5x+6"
+        setStatus(
+            "Ready"
         );
 
         return;
     }
 
 
-    const a =
-        coefficient(match[1], 1);
+    // ==========================================
+    // WORD PROBLEM
+    // ==========================================
 
+    if (
+        type === "wordProblem"
+    ) {
 
-    const b =
-        coefficient(match[2], 1);
+        wordGroup.classList.remove(
+            "hidden"
+        );
 
-
-    const c =
-        coefficient(match[3], 0);
-
-
-    if (a === 0) {
-
-        showError(
-            "The coefficient of x² cannot be zero."
+        setStatus(
+            "AI"
         );
 
         return;
     }
 
 
-    // Discriminant
-    const discriminant =
-        b * b - 4 * a * c;
+    // ==========================================
+    // NORMAL OPERATIONS
+    // ==========================================
+
+    firstGroup.classList.remove(
+        "hidden"
+    );
 
 
-    // Complex roots
-    if (discriminant < 0) {
+    if (
+        type !== "sqrt"
+    ) {
 
-        const realPart =
-            -b / (2 * a);
-
-        const imaginaryPart =
-            Math.sqrt(-discriminant) /
-            Math.abs(2 * a);
-
-
-        const result =
-            `${format(realPart)} ± ${format(imaginaryPart)}i`;
-
-
-        showResult(
-
-            result,
-
-            `${equation} = 0`,
-
-            [
-                `a = ${a}`,
-                `b = ${b}`,
-                `c = ${c}`,
-                `Discriminant = ${format(discriminant)}`,
-                "The discriminant is negative, so the roots are complex.",
-                `Roots = ${result}`
-            ]
+        secondGroup.classList.remove(
+            "hidden"
         );
-
-        return;
     }
 
 
-    // Real roots
-    const x1 =
-        (-b + Math.sqrt(discriminant)) /
-        (2 * a);
-
-
-    const x2 =
-        (-b - Math.sqrt(discriminant)) /
-        (2 * a);
-
-
-    const result =
-        x1 === x2
-            ? format(x1)
-            : `${format(x1)}, ${format(x2)}`;
-
-
-    showResult(
-
-        result,
-
-        `${equation} = 0`,
-
-        [
-            `a = ${a}`,
-            `b = ${b}`,
-            `c = ${c}`,
-            `Discriminant = ${format(discriminant)}`,
-            "Use x = (−b ± √D) / 2a",
-            `x₁ = ${format(x1)}`,
-            `x₂ = ${format(x2)}`,
-            `Roots = ${result}`
-        ]
+    setStatus(
+        "Ready"
     );
 }
 
 
-// ======================================================
-// POLYNOMIAL COEFFICIENT
-// ======================================================
-
-function coefficient(value, defaultValue) {
-
-    if (
-        value === "" ||
-        value === "+"
-    ) {
-
-        return defaultValue;
-    }
-
-
-    if (value === "-") {
-
-        return -defaultValue;
-    }
-
-
-    return Number(value);
-}
-
-
-// ======================================================
-// NORMAL RESULT DISPLAY
-// ======================================================
-
-function showResult(
-    result,
-    equation,
-    steps
-) {
-
-    resultValue.textContent =
-        format(result);
-
-
-    equationText.textContent =
-        equation;
-
-
-    if (!Array.isArray(steps)) {
-
-        steps = [String(steps)];
-    }
-
-
-    stepsText.innerHTML =
-        steps
-            .map((step, index) => `
-
-                <div class="step-item">
-
-                    <span class="step-number">
-                        ${index + 1}
-                    </span>
-
-                    <span class="step-text">
-                        ${escapeHTML(step)}
-                    </span>
-
-                </div>
-
-            `)
-            .join("");
-
-
-    const status =
-        statusElement();
-
-
-    if (status) {
-
-        status.textContent =
-            "Calculated";
-    }
-}
-
-
-// ======================================================
-// ERROR DISPLAY
-// ======================================================
-
-function showError(message) {
-
-    resultValue.textContent =
-        "Error";
-
-
-    equationText.textContent =
-        message;
-
-
-    stepsText.innerHTML = `
-
-        <div class="step-item">
-
-            <span class="step-number">
-                !
-            </span>
-
-            <span class="step-text">
-                ${escapeHTML(message)}
-            </span>
-
-        </div>
-
-    `;
-
-
-    const status =
-        statusElement();
-
-
-    if (status) {
-
-        status.textContent =
-            "Check Input";
-    }
-}
-
-
-// ======================================================
-// STATUS ELEMENT
-// ======================================================
-
-function statusElement() {
-
-    return document.querySelector(
-        ".status-badge"
-    );
-}
-
-
-// ======================================================
-// NUMBER FORMATTER
-// ======================================================
-
-function format(value) {
-
-    if (
-        typeof value !== "number"
-    ) {
-
-        return value;
-    }
-
-
-    if (
-        !Number.isFinite(value)
-    ) {
-
-        return value;
-    }
-
-
-    return Number(
-        value.toFixed(10)
-    );
-}
-
-
-// ======================================================
-// HTML SECURITY
-// ======================================================
-
-function escapeHTML(value) {
-
-    return String(value)
-
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-
-        .replace(
-            /</g,
-            "&lt;"
-        )
-
-        .replace(
-            />/g,
-            "&gt;"
-        )
-
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-
-        .replace(
-            /'/g,
-            "&#039;"
+// =====================================================
+// ESCAPE HTML
+// =====================================================
+
+function escapeHtml(text) {
+
+    const div =
+        document.createElement(
+            "div"
         );
+
+    div.textContent =
+        text;
+
+    return div.innerHTML;
 }
 
 
-// ======================================================
-// FORMAT GEMINI TEXT
-// ======================================================
+// =====================================================
+// EVENT LISTENERS
+// =====================================================
 
-function formatAIText(value) {
+operation.addEventListener(
+    "change",
+    () => {
 
-    return escapeHTML(value)
-        .replace(
-            /\n/g,
-            "<br>"
-        );
-}
+        updateFields();
 
+        calculate();
+    }
+);
 
-// ======================================================
-// NORMAL INPUT EVENTS
-// ======================================================
 
 firstValue.addEventListener(
     "input",
@@ -1474,7 +1306,11 @@ firstValue.addEventListener(
 
         if (
             operation.value !==
-            "wordProblem"
+            "wordProblem" &&
+            operation.value !==
+            "polynomial" &&
+            operation.value !==
+            "trigonometry"
         ) {
 
             calculate();
@@ -1489,7 +1325,11 @@ secondValue.addEventListener(
 
         if (
             operation.value !==
-            "wordProblem"
+            "wordProblem" &&
+            operation.value !==
+            "polynomial" &&
+            operation.value !==
+            "trigonometry"
         ) {
 
             calculate();
@@ -1497,38 +1337,6 @@ secondValue.addEventListener(
     }
 );
 
-
-// ======================================================
-// ENTER KEY FOR NORMAL CALCULATOR
-// ======================================================
-
-firstValue.addEventListener(
-    "keydown",
-    event => {
-
-        if (event.key === "Enter") {
-
-            calculate();
-        }
-    }
-);
-
-
-secondValue.addEventListener(
-    "keydown",
-    event => {
-
-        if (event.key === "Enter") {
-
-            calculate();
-        }
-    }
-);
-
-
-// ======================================================
-// TRIGONOMETRY INPUT
-// ======================================================
 
 trigExpression.addEventListener(
     "input",
@@ -1539,15 +1347,11 @@ trigExpression.addEventListener(
             "trigonometry"
         ) {
 
-            calculate();
+            solveTrigonometry();
         }
     }
 );
 
-
-// ======================================================
-// POLYNOMIAL INPUT
-// ======================================================
 
 polynomialInput.addEventListener(
     "input",
@@ -1558,109 +1362,27 @@ polynomialInput.addEventListener(
             "polynomial"
         ) {
 
-            calculate();
+            solvePolynomial();
         }
     }
 );
 
 
-// ======================================================
-// GEMINI WORD PROBLEM INPUT
-// ======================================================
-
-wordProblemInput.addEventListener(
-    "input",
-    () => {
-
-        // Cancel previous timer
-        clearTimeout(
-            wordProblemTimer
-        );
-
-
-        const question =
-            wordProblemInput.value.trim();
-
-
-        // Empty
-        if (!question) {
-
-            resultValue.textContent =
-                "—";
-
-            equationText.textContent =
-                "Enter a problem to solve.";
-
-            stepsText.innerHTML =
-                "No problem entered.";
-
-            const status =
-                statusElement();
-
-            if (status) {
-                status.textContent =
-                    "Ready";
-            }
-
-            return;
-        }
-
-
-        // Show waiting state
-        const status =
-            statusElement();
-
-        if (status) {
-
-            status.textContent =
-                "Waiting...";
-        }
-
-
-        /*
-           Wait 1 second after the user
-           stops typing before calling Gemini.
-        */
-
-        wordProblemTimer =
-            setTimeout(
-                () => {
-
-                    if (
-                        operation.value ===
-                        "wordProblem"
-                    ) {
-
-                        solveWordProblem();
-                    }
-
-                },
-                1000
-            );
-    }
-);
-
-
-// ======================================================
-// CTRL + ENTER = SOLVE IMMEDIATELY
-// ======================================================
+// =====================================================
+// WORD PROBLEM
+// CTRL + ENTER = SOLVE
+// =====================================================
 
 wordProblemInput.addEventListener(
     "keydown",
     event => {
 
         if (
-            event.key === "Enter" &&
-            event.ctrlKey
+            event.ctrlKey &&
+            event.key === "Enter"
         ) {
 
             event.preventDefault();
-
-
-            clearTimeout(
-                wordProblemTimer
-            );
-
 
             solveWordProblem();
         }
@@ -1668,18 +1390,12 @@ wordProblemInput.addEventListener(
 );
 
 
-// ======================================================
+// =====================================================
 // INITIALIZE
-// ======================================================
+// =====================================================
 
-updateInterface();
+updateFields();
 
-function escapeHtml(text) {
-
-    const div =
-        document.createElement("div");
-
-    div.textContent = text;
-
-    return div.innerHTML;
-}
+setStatus(
+    "Ready"
+);
