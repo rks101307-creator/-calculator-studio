@@ -200,65 +200,76 @@ function getNextApiKey() {
 async function solveWithGemini(problem) {
 
     if (GEMINI_KEYS.length === 0) {
-
         throw new Error(
-            "Gemini API keys are missing. Check your .env file."
+            "Gemini API keys are missing."
         );
     }
 
     const prompt = `
-You are an expert educational problem solver.
+You are an expert teacher and problem solver.
 
 Solve this problem:
 
 ${problem}
 
-The problem can be from:
-Mathematics, Physics, Chemistry, Electronics,
-Computer Science, or general engineering.
+Give a clear educational solution.
 
-Return ONLY valid JSON.
+Your response MUST contain:
 
-Use exactly this structure:
+FINAL ANSWER:
+The direct final answer.
 
-{
-  "subject": "Mathematics",
-  "topic": "Linear Equations",
-  "answer": "Final answer here",
-  "formula": "Formula if applicable",
-  "equation": "Equation if applicable",
-  "given": ["Given values"],
-  "required": "What needs to be found",
-  "assumptions": [],
-  "steps": [
-    "Step 1",
-    "Step 2",
-    "Step 3"
-  ],
-  "calculation": "Calculation",
-  "checks": [],
-  "warning": ""
-}
+SUBJECT:
+The subject.
 
-Important:
-- Always provide a clear final answer in "answer".
-- Always provide steps.
-- Include units when applicable.
-- Do not leave "answer" empty.
-- Do not use markdown code fences.
-- Return JSON only.
+TOPIC:
+The topic.
+
+GIVEN:
+List the given information.
+
+REQUIRED:
+What needs to be found.
+
+FORMULA:
+The formula used, if applicable.
+
+EQUATION:
+The equation used, if applicable.
+
+STEPS:
+1. First step
+2. Second step
+3. Third step
+
+CALCULATION:
+Show the calculation.
+
+Keep the solution concise and accurate.
 `;
 
     let lastError = null;
 
     for (
-        let attempt = 0;
-        attempt < GEMINI_KEYS.length;
-        attempt++
+        let i = 0;
+        i < GEMINI_KEYS.length;
+        i++
     ) {
 
         const apiKey =
             getNextApiKey();
+
+        console.log(
+            `Trying Gemini key ${i + 1}/${GEMINI_KEYS.length}`
+        );
+
+        const controller =
+            new AbortController();
+
+        const timeout =
+            setTimeout(() => {
+                controller.abort();
+            }, 20000);
 
         try {
 
@@ -267,11 +278,6 @@ Important:
                 GEMINI_MODEL +
                 ":generateContent?key=" +
                 encodeURIComponent(apiKey);
-
-            console.log(
-                "Calling Gemini with key:",
-                attempt + 1
-            );
 
             const response =
                 await fetch(url, {
@@ -282,6 +288,8 @@ Important:
                         "Content-Type":
                             "application/json"
                     },
+
+                    signal: controller.signal,
 
                     body: JSON.stringify({
 
@@ -296,23 +304,26 @@ Important:
                         ],
 
                         generationConfig: {
-                            temperature: 0.2
+                            temperature: 0.1,
+                            maxOutputTokens: 1500
                         }
                     })
                 });
+
+            clearTimeout(timeout);
 
             const raw =
                 await response.text();
 
             console.log(
-                "Gemini HTTP status:",
+                "Gemini HTTP:",
                 response.status
             );
 
             if (!response.ok) {
 
                 throw new Error(
-                    `Gemini API ${response.status}: ${raw}`
+                    `Gemini API error ${response.status}: ${raw}`
                 );
             }
 
@@ -326,100 +337,271 @@ Important:
             } catch {
 
                 throw new Error(
-                    "Gemini returned invalid JSON."
+                    "Gemini returned invalid API data."
                 );
             }
 
-            const text =
+            const answer =
                 data
                     ?.candidates?.[0]
-                    ?.content?.parts?.[0]
-                    ?.text
+                    ?.content?.parts
+                    ?.map(part => part.text || "")
+                    ?.join("\n")
                     ?.trim();
 
-            if (!text) {
+            if (!answer) {
 
                 throw new Error(
-                    "Gemini returned no text."
+                    "Gemini returned an empty answer."
                 );
             }
 
             console.log(
-                "Gemini raw answer:",
-                text
+                "Gemini final text:",
+                answer
             );
 
-            // Remove ```json if Gemini adds it
-            let clean =
-                text
-                    .replace(/^```json/i, "")
-                    .replace(/^```/i, "")
-                    .replace(/```$/i, "")
-                    .trim();
+            // -----------------------------------------
+            // Extract sections from normal text
+            // -----------------------------------------
 
-            // Find JSON object if extra text exists
-            const start =
-                clean.indexOf("{");
+            const getSection =
+                (name, nextNames = []) => {
 
-            const end =
-                clean.lastIndexOf("}");
+                    let pattern =
+                        `${name}:`;
 
-            if (
-                start !== -1 &&
-                end !== -1
-            ) {
+                    let start =
+                        answer
+                            .toUpperCase()
+                            .indexOf(
+                                pattern.toUpperCase()
+                            );
 
-                clean =
-                    clean.slice(
-                        start,
-                        end + 1
-                    );
-            }
+                    if (start === -1) {
+                        return "";
+                    }
 
-            let result;
+                    start += pattern.length;
 
-            try {
+                    let end =
+                        answer.length;
 
-                result =
-                    JSON.parse(clean);
+                    for (
+                        const next of nextNames
+                    ) {
 
-            } catch (error) {
+                        const position =
+                            answer
+                                .toUpperCase()
+                                .indexOf(
+                                    `${next}:`.toUpperCase(),
+                                    start
+                                );
 
-                console.log(
-                    "Could not parse Gemini JSON:",
-                    clean
+                        if (
+                            position !== -1 &&
+                            position < end
+                        ) {
+                            end = position;
+                        }
+                    }
+
+                    return answer
+                        .substring(start, end)
+                        .trim();
+                };
+
+            const finalAnswer =
+                getSection(
+                    "FINAL ANSWER",
+                    [
+                        "SUBJECT",
+                        "TOPIC",
+                        "GIVEN",
+                        "REQUIRED",
+                        "FORMULA",
+                        "EQUATION",
+                        "STEPS",
+                        "CALCULATION"
+                    ]
                 );
 
-                // Fallback if Gemini returned plain text
-                result = {
-                    subject: "General",
-                    topic: "Problem Solving",
-                    answer: clean,
-                    formula: "",
-                    equation: "",
-                    given: [],
-                    required: "",
-                    assumptions: [],
-                    steps: [
-                        clean
-                    ],
-                    calculation: clean,
-                    checks: [],
-                    warning:
-                        "Gemini returned plain text instead of structured JSON."
-                };
+            const subject =
+                getSection(
+                    "SUBJECT",
+                    [
+                        "TOPIC",
+                        "GIVEN",
+                        "REQUIRED",
+                        "FORMULA",
+                        "EQUATION",
+                        "STEPS",
+                        "CALCULATION"
+                    ]
+                );
+
+            const topic =
+                getSection(
+                    "TOPIC",
+                    [
+                        "GIVEN",
+                        "REQUIRED",
+                        "FORMULA",
+                        "EQUATION",
+                        "STEPS",
+                        "CALCULATION"
+                    ]
+                );
+
+            const given =
+                getSection(
+                    "GIVEN",
+                    [
+                        "REQUIRED",
+                        "FORMULA",
+                        "EQUATION",
+                        "STEPS",
+                        "CALCULATION"
+                    ]
+                );
+
+            const required =
+                getSection(
+                    "REQUIRED",
+                    [
+                        "FORMULA",
+                        "EQUATION",
+                        "STEPS",
+                        "CALCULATION"
+                    ]
+                );
+
+            const formula =
+                getSection(
+                    "FORMULA",
+                    [
+                        "EQUATION",
+                        "STEPS",
+                        "CALCULATION"
+                    ]
+                );
+
+            const equation =
+                getSection(
+                    "EQUATION",
+                    [
+                        "STEPS",
+                        "CALCULATION"
+                    ]
+                );
+
+            const stepsText =
+                getSection(
+                    "STEPS",
+                    [
+                        "CALCULATION"
+                    ]
+                );
+
+            const calculation =
+                getSection(
+                    "CALCULATION"
+                );
+
+            // -----------------------------------------
+            // Convert steps into array
+            // -----------------------------------------
+
+            let steps = [];
+
+            if (stepsText) {
+
+                steps =
+                    stepsText
+                        .split(/\n/)
+                        .map(line =>
+                            line
+                                .replace(
+                                    /^\s*[-•*]\s*/,
+                                    ""
+                                )
+                                .replace(
+                                    /^\s*\d+[\.\)]\s*/,
+                                    ""
+                                )
+                                .trim()
+                        )
+                        .filter(Boolean);
             }
 
-            return result;
+            // -----------------------------------------
+            // FALLBACK
+            // -----------------------------------------
+
+            const safeAnswer =
+                finalAnswer ||
+                calculation ||
+                answer;
+
+            return {
+
+                subject:
+                    subject || "General",
+
+                topic:
+                    topic || "Problem Solving",
+
+                answer:
+                    safeAnswer,
+
+                formula:
+                    formula || "",
+
+                equation:
+                    equation || "",
+
+                given:
+                    given
+                        ? given
+                            .split(/\n/)
+                            .map(x => x.trim())
+                            .filter(Boolean)
+                        : [],
+
+                required:
+                    required || "",
+
+                assumptions: [],
+
+                steps:
+                    steps.length
+                        ? steps
+                        : [
+                            answer
+                        ],
+
+                calculation:
+                    calculation || answer,
+
+                checks: [],
+
+                warning: ""
+            };
 
         } catch (error) {
 
+            clearTimeout(timeout);
+
+            lastError =
+                error;
+
             console.error(
-                "Gemini attempt failed:",
+                `Gemini key ${i + 1} failed:`,
                 error.message
             );
 
-            lastError = error;
+            continue;
         }
     }
 
@@ -428,7 +610,6 @@ Important:
         "All Gemini API keys failed."
     );
 }
-
 // =====================================================
 // SOLVE API
 // =====================================================
