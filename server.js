@@ -2,21 +2,28 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
+
 // =====================================================
-// CONFIG
+// CONFIGURATION
 // =====================================================
 
 const ROOT = __dirname;
-const PORT = Number(process.env.PORT || 3000);
+
+const PORT =
+    Number(process.env.PORT || 3000);
 
 const GEMINI_MODEL =
-    process.env.GEMINI_MODEL || "gemini-3.6-flash";
+    process.env.GEMINI_MODEL ||
+    "gemini-3.6-flash";
 
 const GEMINI_FALLBACK_MODEL =
-    process.env.GEMINI_FALLBACK_MODEL || "gemini-3.6-flash-lite";
+    process.env.GEMINI_FALLBACK_MODEL ||
+    "gemini-3.6-flash-lite";
+
 
 // =====================================================
-// LOAD .ENV
+// LOAD .ENV FOR LOCAL DEVELOPMENT
+// Render uses Environment Variables directly.
 // =====================================================
 
 function loadEnvFile() {
@@ -25,150 +32,93 @@ function loadEnvFile() {
         path.join(ROOT, ".env");
 
     if (!fs.existsSync(envPath)) {
-        console.log(".env file not found.");
         return;
     }
 
     const content =
-        fs.readFileSync(envPath, "utf8");
+        fs.readFileSync(
+            envPath,
+            "utf8"
+        );
 
     for (const line of content.split(/\r?\n/)) {
 
-        const trimmed = line.trim();
+        const trimmed =
+            line.trim();
 
-        if (!trimmed ||
-            trimmed.startsWith("#")) {
+        if (
+            !trimmed ||
+            trimmed.startsWith("#")
+        ) {
             continue;
         }
 
-        const index =
+        const equalIndex =
             trimmed.indexOf("=");
 
-        if (index === -1) {
+        if (equalIndex === -1) {
             continue;
         }
 
         const key =
-            trimmed.slice(0, index).trim();
+            trimmed
+                .slice(0, equalIndex)
+                .trim();
 
         let value =
-            trimmed.slice(index + 1).trim();
+            trimmed
+                .slice(equalIndex + 1)
+                .trim();
 
         if (
-            (value.startsWith('"') &&
-                value.endsWith('"')) ||
-
-            (value.startsWith("'") &&
-                value.endsWith("'"))
+            value.startsWith('"') &&
+            value.endsWith('"')
         ) {
-            value = value.slice(1, -1);
+            value =
+                value.slice(1, -1);
         }
 
-        process.env[key] = value;
+        if (
+            value.startsWith("'") &&
+            value.endsWith("'")
+        ) {
+            value =
+                value.slice(1, -1);
+        }
+
+        if (!process.env[key]) {
+            process.env[key] = value;
+        }
     }
 }
 
+
 loadEnvFile();
 
+
 // =====================================================
-// GEMINI KEYS
+// GEMINI API KEYS
 // =====================================================
 
 const GEMINI_KEYS = [
+
     process.env.GEMINI_API_KEY_1,
+
     process.env.GEMINI_API_KEY_2,
+
     process.env.GEMINI_API_KEY_3,
+
     process.env.GEMINI_API_KEY_4,
+
     process.env.GEMINI_API_KEY_5,
+
     process.env.GEMINI_API_KEY_6
+
 ].filter(Boolean);
+
 
 let currentKeyIndex = 0;
 
-// =====================================================
-// JSON RESPONSE
-// =====================================================
-
-function sendJson(res, status, data) {
-
-    const output =
-        JSON.stringify(data);
-
-    res.writeHead(status, {
-        "Content-Type":
-            "application/json; charset=utf-8",
-
-        "Access-Control-Allow-Origin": "*",
-
-        "Access-Control-Allow-Headers":
-            "Content-Type",
-
-        "Access-Control-Allow-Methods":
-            "GET, POST, OPTIONS"
-    });
-
-    res.end(output);
-}
-
-// =====================================================
-// READ REQUEST BODY
-// =====================================================
-
-function readBody(req) {
-
-    return new Promise((resolve, reject) => {
-
-        let body = "";
-
-        req.on("data", chunk => {
-
-            body += chunk.toString();
-
-            if (body.length > 2000000) {
-
-                reject(
-                    new Error(
-                        "Request body is too large."
-                    )
-                );
-
-                req.destroy();
-            }
-        });
-
-        req.on("end", () => {
-
-            if (!body.trim()) {
-                resolve({});
-                return;
-            }
-
-            try {
-
-                resolve(
-                    JSON.parse(body)
-                );
-
-            } catch (error) {
-
-                console.log(
-                    "INVALID JSON RECEIVED:",
-                    body
-                );
-
-                reject(
-                    new Error(
-                        "Invalid JSON request."
-                    )
-                );
-            }
-        });
-
-        req.on("error", error => {
-            reject(error);
-        });
-    });
-}
 
 // =====================================================
 // GET NEXT API KEY
@@ -176,7 +126,9 @@ function readBody(req) {
 
 function getNextApiKey() {
 
-    if (GEMINI_KEYS.length === 0) {
+    if (
+        GEMINI_KEYS.length === 0
+    ) {
 
         throw new Error(
             "No Gemini API keys configured."
@@ -184,14 +136,158 @@ function getNextApiKey() {
     }
 
     const key =
-        GEMINI_KEYS[currentKeyIndex];
+        GEMINI_KEYS[
+            currentKeyIndex
+        ];
 
     currentKeyIndex =
-        (currentKeyIndex + 1) %
+        (
+            currentKeyIndex + 1
+        ) %
         GEMINI_KEYS.length;
 
     return key;
 }
+
+
+// =====================================================
+// MIME TYPES
+// =====================================================
+
+const MIME_TYPES = {
+
+    ".html":
+        "text/html; charset=utf-8",
+
+    ".css":
+        "text/css; charset=utf-8",
+
+    ".js":
+        "application/javascript; charset=utf-8",
+
+    ".json":
+        "application/json; charset=utf-8",
+
+    ".png":
+        "image/png",
+
+    ".jpg":
+        "image/jpeg",
+
+    ".jpeg":
+        "image/jpeg",
+
+    ".svg":
+        "image/svg+xml",
+
+    ".ico":
+        "image/x-icon"
+};
+
+
+// =====================================================
+// SEND JSON
+// =====================================================
+
+function sendJson(
+    res,
+    statusCode,
+    data
+) {
+
+    const output =
+        JSON.stringify(
+            data
+        );
+
+    res.writeHead(
+        statusCode,
+        {
+            "Content-Type":
+                "application/json; charset=utf-8",
+
+            "Cache-Control":
+                "no-store"
+        }
+    );
+
+    res.end(output);
+}
+
+
+// =====================================================
+// READ REQUEST BODY
+// =====================================================
+
+function readBody(req) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            let body = "";
+
+            req.on(
+                "data",
+                chunk => {
+
+                    body +=
+                        chunk.toString();
+
+                    // Prevent huge requests
+                    if (
+                        body.length >
+                        1_000_000
+                    ) {
+
+                        reject(
+                            new Error(
+                                "Request body too large."
+                            )
+                        );
+
+                        req.destroy();
+                    }
+                }
+            );
+
+
+            req.on(
+                "end",
+                () => {
+
+                    if (!body) {
+
+                        resolve({});
+
+                        return;
+                    }
+
+                    try {
+
+                        resolve(
+                            JSON.parse(body)
+                        );
+
+                    } catch (error) {
+
+                        reject(
+                            new Error(
+                                "Invalid JSON request."
+                            )
+                        );
+                    }
+                }
+            );
+
+
+            req.on(
+                "error",
+                reject
+            );
+        }
+    );
+}
+
 
 // =====================================================
 // GEMINI SOLVER
@@ -199,537 +295,804 @@ function getNextApiKey() {
 
 async function solveWithGemini(problem) {
 
-    if (GEMINI_KEYS.length === 0) {
+    if (
+        GEMINI_KEYS.length === 0
+    ) {
+
         throw new Error(
-            "Gemini API keys are missing."
+            "No Gemini API keys configured."
         );
     }
 
+
     const prompt = `
-You are an expert teacher and problem solver.
 
-Solve this problem:
+You are an expert educational problem solver.
 
-${problem}
+Solve the following problem accurately.
+
+The problem may be from:
+
+1. Mathematics
+2. Physics
+3. Chemistry
+4. Electronics
+5. Computer Science
 
 Give a clear educational solution.
 
-Your response MUST contain:
+Return the response using EXACTLY these sections:
 
 FINAL ANSWER:
-The direct final answer.
-
 SUBJECT:
-The subject.
-
 TOPIC:
-The topic.
-
 GIVEN:
-List the given information.
-
 REQUIRED:
-What needs to be found.
-
 FORMULA:
-The formula used, if applicable.
-
 EQUATION:
-The equation used, if applicable.
-
 STEPS:
-1. First step
-2. Second step
-3. Third step
-
 CALCULATION:
-Show the calculation.
+CHECK:
+WARNING:
 
-Keep the solution concise and accurate.
+Important rules:
+
+- Give the actual final numerical or textual answer.
+- Do not leave FINAL ANSWER empty.
+- Show the important formulas.
+- Show the equation when applicable.
+- Give clear numbered steps.
+- Include units where appropriate.
+- For mathematics, show calculations.
+- For physics, include SI units.
+- For chemistry, show balanced equations when relevant.
+- For electronics, show relevant electrical formulas.
+- For computer science, explain the logic clearly.
+- If information is missing, state the assumption in WARNING.
+- Do not refuse a normal educational question.
+
+Problem:
+
+${problem}
+
 `;
+
 
     let lastError = null;
 
+
+    // Try every configured API key
     for (
-        let i = 0;
-        i < GEMINI_KEYS.length;
-        i++
+        let attempt = 0;
+        attempt < GEMINI_KEYS.length;
+        attempt++
     ) {
 
-        const apiKey =
+        const key =
             getNextApiKey();
 
+
         console.log(
-            `Trying Gemini key ${i + 1}/${GEMINI_KEYS.length}`
+            `Trying Gemini key ${attempt + 1}/${GEMINI_KEYS.length}`
         );
 
-        const controller =
-            new AbortController();
-
-        const timeout =
-            setTimeout(() => {
-                controller.abort();
-            }, 20000);
 
         try {
 
-            const url =
-                "https://generativelanguage.googleapis.com/v1beta/models/" +
-                GEMINI_MODEL +
-                ":generateContent?key=" +
-                encodeURIComponent(apiKey);
+            const result =
+                await callGeminiModel(
+                    GEMINI_MODEL,
+                    key,
+                    prompt
+                );
 
-            const response =
-                await fetch(url, {
+
+            if (
+                result &&
+                result.answer
+            ) {
+
+                return result;
+            }
+
+
+            console.log(
+                "Primary model returned no usable answer."
+            );
+
+
+            // Try fallback model
+            const fallback =
+                await callGeminiModel(
+                    GEMINI_FALLBACK_MODEL,
+                    key,
+                    prompt
+                );
+
+
+            if (
+                fallback &&
+                fallback.answer
+            ) {
+
+                return fallback;
+            }
+
+
+            lastError =
+                new Error(
+                    "Gemini returned no usable answer."
+                );
+
+
+        } catch (error) {
+
+            console.error(
+                "Gemini error:",
+                error.message
+            );
+
+            lastError =
+                error;
+        }
+    }
+
+
+    throw (
+        lastError ||
+        new Error(
+            "All Gemini API attempts failed."
+        )
+    );
+}
+
+
+// =====================================================
+// CALL GEMINI MODEL
+// =====================================================
+
+async function callGeminiModel(
+    model,
+    key,
+    prompt
+) {
+
+    const url =
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+
+
+    const controller =
+        new AbortController();
+
+
+    const timeout =
+        setTimeout(
+            () => controller.abort(),
+            20000
+        );
+
+
+    try {
+
+        const response =
+            await fetch(
+                url,
+                {
 
                     method: "POST",
 
                     headers: {
+
                         "Content-Type":
                             "application/json"
                     },
 
-                    signal: controller.signal,
+                    body:
+                        JSON.stringify({
 
-                    body: JSON.stringify({
+                            contents: [
 
-                        contents: [
-                            {
-                                parts: [
-                                    {
-                                        text: prompt
-                                    }
-                                ]
+                                {
+                                    role: "user",
+
+                                    parts: [
+                                        {
+                                            text: prompt
+                                        }
+                                    ]
+                                }
+
+                            ],
+
+                            generationConfig: {
+
+                                temperature: 0.1,
+
+                                maxOutputTokens:
+                                    4096
                             }
-                        ],
+                        }),
 
-                        generationConfig: {
-                            temperature: 0.1,
-                            maxOutputTokens: 1500
-                        }
-                    })
-                });
-
-            clearTimeout(timeout);
-
-            const raw =
-                await response.text();
-
-            console.log(
-                "Gemini HTTP:",
-                response.status
-            );
-
-            if (!response.ok) {
-
-                throw new Error(
-                    `Gemini API error ${response.status}: ${raw}`
-                );
-            }
-
-            let data;
-
-            try {
-
-                data =
-                    JSON.parse(raw);
-
-            } catch {
-
-                throw new Error(
-                    "Gemini returned invalid API data."
-                );
-            }
-
-            const answer =
-                data
-                    ?.candidates?.[0]
-                    ?.content?.parts
-                    ?.map(part => part.text || "")
-                    ?.join("\n")
-                    ?.trim();
-
-            if (!answer) {
-
-                throw new Error(
-                    "Gemini returned an empty answer."
-                );
-            }
-
-            console.log(
-                "Gemini final text:",
-                answer
-            );
-
-            // -----------------------------------------
-            // Extract sections from normal text
-            // -----------------------------------------
-
-            const getSection =
-                (name, nextNames = []) => {
-
-                    let pattern =
-                        `${name}:`;
-
-                    let start =
-                        answer
-                            .toUpperCase()
-                            .indexOf(
-                                pattern.toUpperCase()
-                            );
-
-                    if (start === -1) {
-                        return "";
-                    }
-
-                    start += pattern.length;
-
-                    let end =
-                        answer.length;
-
-                    for (
-                        const next of nextNames
-                    ) {
-
-                        const position =
-                            answer
-                                .toUpperCase()
-                                .indexOf(
-                                    `${next}:`.toUpperCase(),
-                                    start
-                                );
-
-                        if (
-                            position !== -1 &&
-                            position < end
-                        ) {
-                            end = position;
-                        }
-                    }
-
-                    return answer
-                        .substring(start, end)
-                        .trim();
-                };
-
-            const finalAnswer =
-                getSection(
-                    "FINAL ANSWER",
-                    [
-                        "SUBJECT",
-                        "TOPIC",
-                        "GIVEN",
-                        "REQUIRED",
-                        "FORMULA",
-                        "EQUATION",
-                        "STEPS",
-                        "CALCULATION"
-                    ]
-                );
-
-            const subject =
-                getSection(
-                    "SUBJECT",
-                    [
-                        "TOPIC",
-                        "GIVEN",
-                        "REQUIRED",
-                        "FORMULA",
-                        "EQUATION",
-                        "STEPS",
-                        "CALCULATION"
-                    ]
-                );
-
-            const topic =
-                getSection(
-                    "TOPIC",
-                    [
-                        "GIVEN",
-                        "REQUIRED",
-                        "FORMULA",
-                        "EQUATION",
-                        "STEPS",
-                        "CALCULATION"
-                    ]
-                );
-
-            const given =
-                getSection(
-                    "GIVEN",
-                    [
-                        "REQUIRED",
-                        "FORMULA",
-                        "EQUATION",
-                        "STEPS",
-                        "CALCULATION"
-                    ]
-                );
-
-            const required =
-                getSection(
-                    "REQUIRED",
-                    [
-                        "FORMULA",
-                        "EQUATION",
-                        "STEPS",
-                        "CALCULATION"
-                    ]
-                );
-
-            const formula =
-                getSection(
-                    "FORMULA",
-                    [
-                        "EQUATION",
-                        "STEPS",
-                        "CALCULATION"
-                    ]
-                );
-
-            const equation =
-                getSection(
-                    "EQUATION",
-                    [
-                        "STEPS",
-                        "CALCULATION"
-                    ]
-                );
-
-            const stepsText =
-                getSection(
-                    "STEPS",
-                    [
-                        "CALCULATION"
-                    ]
-                );
-
-            const calculation =
-                getSection(
-                    "CALCULATION"
-                );
-
-            // -----------------------------------------
-            // Convert steps into array
-            // -----------------------------------------
-
-            let steps = [];
-
-            if (stepsText) {
-
-                steps =
-                    stepsText
-                        .split(/\n/)
-                        .map(line =>
-                            line
-                                .replace(
-                                    /^\s*[-•*]\s*/,
-                                    ""
-                                )
-                                .replace(
-                                    /^\s*\d+[\.\)]\s*/,
-                                    ""
-                                )
-                                .trim()
-                        )
-                        .filter(Boolean);
-            }
-
-            // -----------------------------------------
-            // FALLBACK
-            // -----------------------------------------
-
-            const safeAnswer =
-                finalAnswer ||
-                calculation ||
-                answer;
-
-            return {
-
-                subject:
-                    subject || "General",
-
-                topic:
-                    topic || "Problem Solving",
-
-                answer:
-                    safeAnswer,
-
-                formula:
-                    formula || "",
-
-                equation:
-                    equation || "",
-
-                given:
-                    given
-                        ? given
-                            .split(/\n/)
-                            .map(x => x.trim())
-                            .filter(Boolean)
-                        : [],
-
-                required:
-                    required || "",
-
-                assumptions: [],
-
-                steps:
-                    steps.length
-                        ? steps
-                        : [
-                            answer
-                        ],
-
-                calculation:
-                    calculation || answer,
-
-                checks: [],
-
-                warning: ""
-            };
-
-        } catch (error) {
-
-            clearTimeout(timeout);
-
-            lastError =
-                error;
-
-            console.error(
-                `Gemini key ${i + 1} failed:`,
-                error.message
-            );
-
-            continue;
-        }
-    }
-
-    throw new Error(
-        lastError?.message ||
-        "All Gemini API keys failed."
-    );
-}
-// =====================================================
-// SOLVE API
-// =====================================================
-
-async function handleSolve(req, res) {
-
-    try {
-
-        console.log("");
-        console.log(
-            "========== SOLVE REQUEST =========="
-        );
-
-        const body =
-            await readBody(req);
-
-        console.log(
-            "Received body:",
-            body
-        );
-
-        // Accept BOTH names
-        const problem =
-            String(
-                body.problem ||
-                body.question ||
-                ""
-            ).trim();
-
-        console.log(
-            "Problem:",
-            problem
-        );
-
-        if (!problem) {
-
-            return sendJson(
-                res,
-                400,
-                {
-                    success: false,
-                    error:
-                        "Please enter a problem."
+                    signal:
+                        controller.signal
                 }
             );
-        }
 
-        const result =
-            await solveWithGemini(problem);
 
         console.log(
-            "Final result:",
-            result
+            "Gemini HTTP:",
+            response.status
         );
 
-        return sendJson(
-            res,
-            200,
-            {
-                success: true,
-                result: result
-            }
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            const message =
+                data?.error?.message ||
+                `Gemini HTTP ${response.status}`;
+
+            throw new Error(
+                message
+            );
+        }
+
+
+        const text =
+            data
+                ?.candidates?.[0]
+                ?.content?.parts
+                ?.map(
+                    part =>
+                        part.text || ""
+                )
+                .join("")
+                .trim();
+
+
+        console.log(
+            "Gemini final text:",
+            text
         );
 
-    } catch (error) {
 
-        console.error(
-            "SOLVE ERROR:",
-            error
+        if (!text) {
+
+            throw new Error(
+                "Gemini returned an empty response."
+            );
+        }
+
+
+        return parseGeminiResponse(
+            text
         );
 
-        return sendJson(
-            res,
-            500,
-            {
-                success: false,
-                error:
-                    error.message ||
-                    "Server error."
-            }
-        );
+    } finally {
+
+        clearTimeout(timeout);
     }
 }
 
+
 // =====================================================
-// STATIC FILES
+// PARSE GEMINI RESPONSE
 // =====================================================
 
-function sendFile(
+function parseGeminiResponse(text) {
+
+    const result = {
+
+        subject:
+            "General",
+
+        topic:
+            "",
+
+        answer:
+            "",
+
+        formula:
+            "",
+
+        equation:
+            "",
+
+        given:
+            [],
+
+        required:
+            "",
+
+        assumptions:
+            [],
+
+        steps:
+            [],
+
+        calculation:
+            "",
+
+        checks:
+            [],
+
+        warning:
+            ""
+    };
+
+
+    const sections = [
+
+        "FINAL ANSWER",
+        "SUBJECT",
+        "TOPIC",
+        "GIVEN",
+        "REQUIRED",
+        "FORMULA",
+        "EQUATION",
+        "STEPS",
+        "CALCULATION",
+        "CHECK",
+        "WARNING"
+    ];
+
+
+    function getSection(
+        sectionName
+    ) {
+
+        const start =
+            text.search(
+                new RegExp(
+                    "^\\s*" +
+                    escapeRegExp(
+                        sectionName
+                    ) +
+                    "\\s*:\\s*",
+                    "im"
+                )
+            );
+
+
+        if (start === -1) {
+            return "";
+        }
+
+
+        const afterStart =
+            text.slice(start);
+
+
+        const lines =
+            afterStart.split(
+                /\r?\n/
+            );
+
+
+        // Remove current heading
+        lines.shift();
+
+
+        const output = [];
+
+
+        for (
+            const line of lines
+        ) {
+
+            const trimmed =
+                line.trim();
+
+
+            let isNextSection =
+                false;
+
+
+            for (
+                const section of sections
+            ) {
+
+                if (
+                    section ===
+                    sectionName
+                ) {
+                    continue;
+                }
+
+
+                const sectionRegex =
+                    new RegExp(
+                        "^" +
+                        escapeRegExp(
+                            section
+                        ) +
+                        "\\s*:",
+                        "i"
+                    );
+
+
+                if (
+                    sectionRegex.test(
+                        trimmed
+                    )
+                ) {
+
+                    isNextSection =
+                        true;
+
+                    break;
+                }
+            }
+
+
+            if (
+                isNextSection
+            ) {
+                break;
+            }
+
+
+            output.push(line);
+        }
+
+
+        return output
+            .join("\n")
+            .trim();
+    }
+
+
+    // ==========================================
+    // MAIN FIELDS
+    // ==========================================
+
+    result.answer =
+        getSection(
+            "FINAL ANSWER"
+        );
+
+
+    result.subject =
+        getSection(
+            "SUBJECT"
+        ) ||
+        "General";
+
+
+    result.topic =
+        getSection(
+            "TOPIC"
+        );
+
+
+    result.formula =
+        getSection(
+            "FORMULA"
+        );
+
+
+    result.equation =
+        getSection(
+            "EQUATION"
+        );
+
+
+    result.required =
+        getSection(
+            "REQUIRED"
+        );
+
+
+    result.calculation =
+        getSection(
+            "CALCULATION"
+        );
+
+
+    result.warning =
+        getSection(
+            "WARNING"
+        );
+
+
+    // ==========================================
+    // GIVEN
+    // ==========================================
+
+    const given =
+        getSection(
+            "GIVEN"
+        );
+
+
+    if (given) {
+
+        result.given =
+            given
+                .split(/\r?\n/)
+                .map(
+                    line =>
+                        line
+                            .replace(
+                                /^\s*(?:[-*]|\d+[.)])\s*/,
+                                ""
+                            )
+                            .trim()
+                )
+                .filter(Boolean);
+    }
+
+
+    // ==========================================
+    // STEPS
+    // ==========================================
+
+    const steps =
+        getSection(
+            "STEPS"
+        );
+
+
+    if (steps) {
+
+        result.steps =
+            steps
+                .split(/\r?\n/)
+                .map(
+                    line =>
+                        line
+                            .replace(
+                                /^\s*\d+[.)]\s*/,
+                                ""
+                            )
+                            .replace(
+                                /^\s*[-*]\s*/,
+                                ""
+                            )
+                            .trim()
+                )
+                .filter(Boolean);
+    }
+
+
+    // ==========================================
+    // CHECK
+    // ==========================================
+
+    const check =
+        getSection(
+            "CHECK"
+        );
+
+
+    if (check) {
+
+        result.checks =
+            check
+                .split(/\r?\n/)
+                .map(
+                    line =>
+                        line
+                            .replace(
+                                /^\s*(?:[-*]|\d+[.)])\s*/,
+                                ""
+                            )
+                            .trim()
+                )
+                .filter(Boolean);
+    }
+
+
+    // ==========================================
+    // FALLBACK ANSWER
+    // ==========================================
+
+    if (
+        !result.answer
+    ) {
+
+        const fallback =
+            text.match(
+                /(?:FINAL RESULT|ANSWER|FINAL)\s*:\s*(.+)/i
+            );
+
+
+        if (fallback) {
+
+            result.answer =
+                fallback[1].trim();
+        }
+    }
+
+
+    // ==========================================
+    // FINAL SAFETY FALLBACK
+    // ==========================================
+
+    if (
+        !result.answer
+    ) {
+
+        result.answer =
+            "Gemini returned a solution, but the final answer could not be extracted.";
+    }
+
+
+    return result;
+}
+
+
+// =====================================================
+// ESCAPE REGULAR EXPRESSION
+// =====================================================
+
+function escapeRegExp(text) {
+
+    return text.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
+    );
+}
+
+
+// =====================================================
+// HEALTH API
+// =====================================================
+
+function healthResponse() {
+
+    return {
+
+        status:
+            "ok",
+
+        gemini:
+            GEMINI_KEYS.length > 0
+                ? "configured"
+                : "not configured",
+
+        keys:
+            GEMINI_KEYS.length,
+
+        model:
+            GEMINI_MODEL,
+
+        fallbackModel:
+            GEMINI_FALLBACK_MODEL
+    };
+}
+
+
+// =====================================================
+// STATIC FILE SERVER
+// =====================================================
+
+function serveStatic(
+    req,
     res,
-    filePath,
-    contentType
+    pathname
 ) {
 
-    if (!fs.existsSync(filePath)) {
+    let requestedPath =
+        pathname;
 
-        sendJson(
-            res,
-            404,
-            {
-                error:
-                    "File not found."
-            }
+
+    if (
+        requestedPath === "/"
+    ) {
+
+        requestedPath =
+            "/index.html";
+    }
+
+
+    let filePath =
+        path.join(
+            ROOT,
+            requestedPath
+        );
+
+
+    // Prevent path traversal
+    const normalizedRoot =
+        path.resolve(ROOT) +
+        path.sep;
+
+    const normalizedFile =
+        path.resolve(filePath);
+
+
+    if (
+        !normalizedFile.startsWith(
+            normalizedRoot
+        )
+    ) {
+
+        res.writeHead(
+            403
+        );
+
+        res.end(
+            "Forbidden"
         );
 
         return;
     }
 
-    res.writeHead(
-        200,
-        {
-            "Content-Type":
-                contentType
+
+    fs.stat(
+        filePath,
+        (error, stats) => {
+
+            if (
+                error ||
+                !stats.isFile()
+            ) {
+
+                // SPA fallback
+                filePath =
+                    path.join(
+                        ROOT,
+                        "index.html"
+                    );
+            }
+
+
+            fs.readFile(
+                filePath,
+                (readError, data) => {
+
+                    if (readError) {
+
+                        res.writeHead(
+                            404,
+                            {
+                                "Content-Type":
+                                    "text/plain"
+                            }
+                        );
+
+                        res.end(
+                            "File not found"
+                        );
+
+                        return;
+                    }
+
+
+                    const ext =
+                        path.extname(
+                            filePath
+                        ).toLowerCase();
+
+
+                    const contentType =
+                        MIME_TYPES[ext] ||
+                        "application/octet-stream";
+
+
+                    res.writeHead(
+                        200,
+                        {
+                            "Content-Type":
+                                contentType,
+
+                            "Cache-Control":
+                                "no-cache"
+                        }
+                    );
+
+
+                    res.end(data);
+                }
+            );
         }
     );
-
-    fs.createReadStream(
-        filePath
-    ).pipe(res);
 }
+
 
 // =====================================================
 // SERVER
@@ -739,165 +1102,233 @@ const server =
     http.createServer(
         async (req, res) => {
 
-            // -----------------------------
-            // OPTIONS
-            // -----------------------------
+            try {
 
-            if (req.method === "OPTIONS") {
+                const parsedUrl =
+                    new URL(
+                        req.url,
+                        `http://${req.headers.host || "localhost"}`
+                    );
 
-                res.writeHead(
-                    204,
-                    {
-                        "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Headers": "Content-Type",
-                        "Access-Control-Allow-Methods":
-                            "GET, POST, OPTIONS"
+
+                const pathname =
+                    parsedUrl.pathname;
+
+
+                // ==================================
+                // HEALTH
+                // ==================================
+
+                if (
+                    pathname ===
+                    "/api/health"
+                ) {
+
+                    return sendJson(
+                        res,
+                        200,
+                        healthResponse()
+                    );
+                }
+
+
+                // ==================================
+                // SOLVE
+                // ==================================
+
+                if (
+                    pathname ===
+                    "/api/solve" &&
+                    req.method === "POST"
+                ) {
+
+                    console.log(
+                        "\n========= SOLVE REQUEST =========="
+                    );
+
+
+                    const body =
+                        await readBody(req);
+
+
+                    console.log(
+                        "Received body:",
+                        body
+                    );
+
+
+                    // Accept both old and new frontend names
+                    const problem =
+                        String(
+                            body.problem ||
+                            body.question ||
+                            ""
+                        ).trim();
+
+
+                    console.log(
+                        "Problem:",
+                        problem
+                    );
+
+
+                    if (!problem) {
+
+                        return sendJson(
+                            res,
+                            400,
+                            {
+                                success:
+                                    false,
+
+                                error:
+                                    "Please enter a problem."
+                            }
+                        );
                     }
-                );
 
-                res.end();
 
-                return;
-            }
+                    const result =
+                        await solveWithGemini(
+                            problem
+                        );
 
-            // -----------------------------
-            // HEALTH
-            // -----------------------------
 
-            if (
-                req.method === "GET" &&
-                req.url === "/api/health"
-            ) {
+                    console.log(
+                        "Final result:",
+                        result
+                    );
 
-                return sendJson(
-                    res,
-                    200,
-                    {
-                        status: "ok",
 
-                        gemini:
-                            GEMINI_KEYS.length
-                                ? "configured"
-                                : "missing",
+                    // ==================================
+                    // IMPORTANT RESPONSE STRUCTURE
+                    // ==================================
 
-                        keys:
-                            GEMINI_KEYS.length,
+                    return sendJson(
+                        res,
+                        200,
+                        {
 
-                        model:
-                            GEMINI_MODEL
-                    }
-                );
-            }
+                            success:
+                                true,
 
-            // -----------------------------
-            // SOLVE
-            // -----------------------------
+                            result: {
 
-            if (
-                req.method === "POST" &&
-                req.url === "/api/solve"
-            ) {
+                                subject:
+                                    result.subject ||
+                                    "General",
 
-                return handleSolve(
+                                topic:
+                                    result.topic ||
+                                    "Problem Solving",
+
+                                answer:
+                                    result.answer ||
+                                    "",
+
+                                formula:
+                                    result.formula ||
+                                    "",
+
+                                equation:
+                                    result.equation ||
+                                    "",
+
+                                given:
+                                    result.given ||
+                                    [],
+
+                                required:
+                                    result.required ||
+                                    "",
+
+                                assumptions:
+                                    result.assumptions ||
+                                    [],
+
+                                steps:
+                                    Array.isArray(
+                                        result.steps
+                                    )
+                                        ? result.steps
+                                        : [],
+
+                                calculation:
+                                    result.calculation ||
+                                    "",
+
+                                checks:
+                                    result.checks ||
+                                    [],
+
+                                warning:
+                                    result.warning ||
+                                    ""
+                            }
+                        }
+                    );
+                }
+
+
+                // ==================================
+                // STATIC FILES
+                // ==================================
+
+                serveStatic(
                     req,
-                    res
-                );
-            }
-
-            // -----------------------------
-            // STATIC WEBSITE
-            // -----------------------------
-
-            let requestPath =
-                req.url.split("?")[0];
-
-            if (requestPath === "/") {
-                requestPath =
-                    "/index.html";
-            }
-
-            const filePath =
-                path.join(
-                    ROOT,
-                    decodeURIComponent(
-                        requestPath
-                    )
-                );
-
-            if (
-                !filePath.startsWith(ROOT)
-            ) {
-
-                return sendJson(
                     res,
-                    403,
-                    {
-                        error: "Forbidden"
-                    }
+                    pathname
                 );
+
+            } catch (error) {
+
+                console.error(
+                    "SERVER ERROR:",
+                    error
+                );
+
+
+                if (
+                    !res.headersSent
+                ) {
+
+                    sendJson(
+                        res,
+                        500,
+                        {
+
+                            success:
+                                false,
+
+                            error:
+                                error.message ||
+                                "Internal server error."
+                        }
+                    );
+                }
             }
-
-            const ext =
-                path.extname(
-                    filePath
-                ).toLowerCase();
-
-            const types = {
-
-                ".html":
-                    "text/html; charset=utf-8",
-
-                ".css":
-                    "text/css; charset=utf-8",
-
-                ".js":
-                    "application/javascript; charset=utf-8",
-
-                ".json":
-                    "application/json; charset=utf-8",
-
-                ".png":
-                    "image/png",
-
-                ".jpg":
-                    "image/jpeg",
-
-                ".jpeg":
-                    "image/jpeg",
-
-                ".svg":
-                    "image/svg+xml",
-
-                ".ico":
-                    "image/x-icon"
-            };
-
-            sendFile(
-                res,
-                filePath,
-                types[ext] ||
-                    "application/octet-stream"
-            );
         }
     );
 
+
 // =====================================================
-// START
+// START SERVER
 // =====================================================
 
 server.listen(
     PORT,
     () => {
 
-        console.log("");
         console.log(
-            "======================================"
+            "\n================================="
         );
+
         console.log(
-            "       CALCULATOR STUDIO SERVER"
+            "   CALCULATOR STUDIO SERVER"
         );
+
         console.log(
-            "======================================"
+            "================================="
         );
 
         console.log(
@@ -909,10 +1340,14 @@ server.listen(
         );
 
         console.log(
+            `Gemini fallback: ${GEMINI_FALLBACK_MODEL}`
+        );
+
+        console.log(
             `Gemini API: ${
-                GEMINI_KEYS.length
+                GEMINI_KEYS.length > 0
                     ? "CONFIGURED"
-                    : "MISSING"
+                    : "NOT CONFIGURED"
             }`
         );
 
@@ -921,9 +1356,7 @@ server.listen(
         );
 
         console.log(
-            "======================================"
+            "=================================\n"
         );
-
-        console.log("");
     }
 );
