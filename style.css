@@ -510,3 +510,40 @@ input[type="text"]::-webkit-inner-spin-button {
     box-sizing:border-box;
 }
 
+/* OPERATION DROPDOWN */
+.operation-select {
+    position: relative;
+    width: 100%;
+}
+
+.operation-select select {
+    width: 100%;
+    min-height: 58px;
+    padding: 14px 45px 14px 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(192, 132, 252, 0.2);
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 1.05rem;
+    font-family: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.operation-select select option {
+    background: #0e0c14;
+    color: #eee8f4;
+}
+
+.operation-arrow {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #eee8f4;
+    font-size: 12px;
+    pointer-events: none;
+}
