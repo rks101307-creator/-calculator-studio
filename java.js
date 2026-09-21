@@ -1,3 +1,4 @@
+```javascript
 // ======================================================
 // CALCULATOR STUDIO
 // Normal Calculator + Trigonometry + Polynomial
@@ -43,13 +44,6 @@ const wordProblemInput =
 
 
 // ======================================================
-// GEMINI DEBOUNCE TIMER
-// ======================================================
-
-let wordProblemTimer = null;
-
-
-// ======================================================
 // CHANGE OPERATION
 // ======================================================
 
@@ -60,7 +54,7 @@ function updateInterface() {
 
     const op = operation.value;
 
-    // Hide everything
+    // Hide all groups
     firstGroup.classList.add("hidden");
     secondGroup.classList.add("hidden");
     trigGroup.classList.add("hidden");
@@ -68,7 +62,10 @@ function updateInterface() {
     wordGroup.classList.add("hidden");
 
 
-    // Normal two-number operations
+    // ==================================================
+    // NORMAL TWO-VALUE OPERATIONS
+    // ==================================================
+
     if (
         op === "add" ||
         op === "subtract" ||
@@ -84,50 +81,81 @@ function updateInterface() {
     }
 
 
-    // Square root
+    // ==================================================
+    // SQUARE ROOT
+    // ==================================================
+
     if (op === "sqrt") {
 
         firstGroup.classList.remove("hidden");
     }
 
 
-    // Trigonometry
+    // ==================================================
+    // TRIGONOMETRY
+    // ==================================================
+
     if (op === "trigonometry") {
 
         trigGroup.classList.remove("hidden");
     }
 
 
-    // Polynomial
+    // ==================================================
+    // POLYNOMIAL
+    // ==================================================
+
     if (op === "polynomial") {
 
         polynomialGroup.classList.remove("hidden");
     }
 
 
-    // Gemini word problem
+    // ==================================================
+    // WORD PROBLEM
+    // ==================================================
+
     if (op === "wordProblem") {
 
         wordGroup.classList.remove("hidden");
 
         resultValue.textContent = "—";
+
         equationText.textContent =
-            "Ask Gemini a mathematics, physics, chemistry, electronics, or computer science problem.";
+            "Enter a problem and press Ctrl + Enter.";
 
         stepsText.innerHTML =
-            "Enter your problem above.";
+            "Ready for your problem.";
+
+        const status =
+            statusElement();
+
+        if (status) {
+            status.textContent = "Ready";
+        }
     }
 
 
-    // Normal reset
+    // ==================================================
+    // RESET NORMAL RESULT
+    // ==================================================
+
     if (op !== "wordProblem") {
 
         resultValue.textContent = "—";
+
         equationText.textContent =
             "Enter values to calculate";
 
         stepsText.innerHTML =
             "No steps yet.";
+
+        const status =
+            statusElement();
+
+        if (status) {
+            status.textContent = "Ready";
+        }
     }
 }
 
@@ -141,7 +169,7 @@ function calculate() {
     const op = operation.value;
 
 
-    // Word problem is handled separately
+    // Word problem
     if (op === "wordProblem") {
 
         solveWordProblem();
@@ -435,7 +463,10 @@ async function solveWordProblem() {
         wordProblemInput.value.trim();
 
 
-    // Empty input
+    // ==================================================
+    // EMPTY INPUT
+    // ==================================================
+
     if (!question) {
 
         resultValue.textContent = "—";
@@ -447,7 +478,7 @@ async function solveWordProblem() {
             "No problem entered.";
 
         const status =
-            document.querySelector(".status-badge");
+            statusElement();
 
         if (status) {
             status.textContent = "Ready";
@@ -457,9 +488,12 @@ async function solveWordProblem() {
     }
 
 
-    // Loading state
+    // ==================================================
+    // LOADING STATE
+    // ==================================================
+
     const status =
-        document.querySelector(".status-badge");
+        statusElement();
 
     if (status) {
         status.textContent = "Thinking...";
@@ -469,10 +503,8 @@ async function solveWordProblem() {
     resultValue.textContent =
         "Solving...";
 
-
     equationText.textContent =
         "Gemini is analyzing your problem...";
-
 
     stepsText.innerHTML = `
         <div class="step-item">
@@ -490,6 +522,10 @@ async function solveWordProblem() {
     `;
 
 
+    // ==================================================
+    // SEND TO SERVER
+    // ==================================================
+
     try {
 
         const response =
@@ -502,13 +538,16 @@ async function solveWordProblem() {
                         "application/json"
                 },
 
+                // IMPORTANT:
+                // server.js expects "problem"
                 body: JSON.stringify({
-                    question: question
+                    problem: question
                 })
             });
 
 
         let data;
+
 
         try {
 
@@ -523,6 +562,10 @@ async function solveWordProblem() {
         }
 
 
+        // ==================================================
+        // SERVER ERROR
+        // ==================================================
+
         if (!response.ok ||
             data.error) {
 
@@ -532,6 +575,10 @@ async function solveWordProblem() {
             );
         }
 
+
+        // ==================================================
+        // DISPLAY RESULT
+        // ==================================================
 
         displayGeminiResult(data);
 
@@ -617,17 +664,17 @@ function displayGeminiResult(data) {
         data.warning || "";
 
 
-    // ==============================================
+    // ==================================================
     // FINAL ANSWER
-    // ==============================================
+    // ==================================================
 
     resultValue.textContent =
         answer;
 
 
-    // ==============================================
+    // ==================================================
     // EQUATION AREA
-    // ==============================================
+    // ==================================================
 
     let equationHTML = "";
 
@@ -676,14 +723,14 @@ function displayGeminiResult(data) {
         "Gemini solved the problem.";
 
 
-    // ==============================================
+    // ==================================================
     // BUILD SOLUTION
-    // ==============================================
+    // ==================================================
 
     const allSteps = [];
 
 
-    // Given
+    // GIVEN
     if (given.length > 0) {
 
         allSteps.push(`
@@ -700,7 +747,7 @@ function displayGeminiResult(data) {
     }
 
 
-    // Required
+    // REQUIRED
     if (required.length > 0) {
 
         allSteps.push(`
@@ -717,7 +764,7 @@ function displayGeminiResult(data) {
     }
 
 
-    // Assumptions
+    // ASSUMPTIONS
     if (assumptions.length > 0) {
 
         allSteps.push(`
@@ -734,7 +781,7 @@ function displayGeminiResult(data) {
     }
 
 
-    // Formula
+    // FORMULA
     if (formula) {
 
         allSteps.push(`
@@ -747,7 +794,7 @@ function displayGeminiResult(data) {
     }
 
 
-    // Calculation
+    // CALCULATION
     if (calculation) {
 
         allSteps.push(`
@@ -760,7 +807,7 @@ function displayGeminiResult(data) {
     }
 
 
-    // Steps
+    // SOLUTION STEPS
     steps.forEach(step => {
 
         allSteps.push(
@@ -769,7 +816,7 @@ function displayGeminiResult(data) {
     });
 
 
-    // Checks
+    // CHECKS
     if (checks.length > 0) {
 
         allSteps.push(`
@@ -786,7 +833,7 @@ function displayGeminiResult(data) {
     }
 
 
-    // Warning
+    // WARNING
     if (warning) {
 
         allSteps.push(`
@@ -799,9 +846,9 @@ function displayGeminiResult(data) {
     }
 
 
-    // ==============================================
+    // ==================================================
     // DISPLAY STEPS
-    // ==============================================
+    // ==================================================
 
     if (allSteps.length === 0) {
 
@@ -831,13 +878,16 @@ function displayGeminiResult(data) {
     }
 
 
-    // ==============================================
+    // ==================================================
     // STATUS
-    // ==============================================
+    // ==================================================
 
-    if (statusElement()) {
+    const status =
+        statusElement();
 
-        statusElement().textContent =
+    if (status) {
+
+        status.textContent =
             "Solved";
     }
 }
@@ -882,7 +932,6 @@ function solveTrigonometry() {
                 );
 
 
-        // Close parentheses added to degree functions
         jsExpression =
             fixTrigParentheses(
                 jsExpression
@@ -930,19 +979,12 @@ function solveTrigonometry() {
 
 function fixTrigParentheses(expression) {
 
-    /*
-       This helper handles common inputs such as:
-
-       sin(30)
-       cos(60)
-       tan(45)
-    */
-
     expression =
         expression.replace(
             /Math\.sin\(Math\.PI\/180\*\(([^()]*)\)/g,
             "Math.sin(Math.PI/180*($1))"
         );
+
 
     expression =
         expression.replace(
@@ -950,11 +992,13 @@ function fixTrigParentheses(expression) {
             "Math.cos(Math.PI/180*($1))"
         );
 
+
     expression =
         expression.replace(
             /Math\.tan\(Math\.PI\/180\*\(([^()]*)\)/g,
             "Math.tan(Math.PI/180*($1))"
         );
+
 
     return expression;
 }
@@ -983,7 +1027,7 @@ function solvePolynomial() {
     }
 
 
-    // Remove = 0 if provided
+    // Remove = 0 if present
     if (equation.includes("=")) {
 
         equation =
@@ -992,12 +1036,10 @@ function solvePolynomial() {
 
 
     /*
-       Supported format:
+       Supported:
 
        x^2-5x+6
-
        2x^2+3x-5
-
        x^2+x-2
     */
 
@@ -1039,16 +1081,23 @@ function solvePolynomial() {
     }
 
 
-    // Discriminant
+    // ==================================================
+    // DISCRIMINANT
+    // ==================================================
+
     const discriminant =
         b * b - 4 * a * c;
 
 
-    // Complex roots
+    // ==================================================
+    // COMPLEX ROOTS
+    // ==================================================
+
     if (discriminant < 0) {
 
         const realPart =
             -b / (2 * a);
+
 
         const imaginaryPart =
             Math.sqrt(-discriminant) /
@@ -1079,7 +1128,10 @@ function solvePolynomial() {
     }
 
 
-    // Real roots
+    // ==================================================
+    // REAL ROOTS
+    // ==================================================
+
     const x1 =
         (-b + Math.sqrt(discriminant)) /
         (2 * a);
@@ -1364,7 +1416,7 @@ secondValue.addEventListener(
 
 
 // ======================================================
-// ENTER KEY FOR NORMAL CALCULATOR
+// ENTER KEY - NORMAL CALCULATOR
 // ======================================================
 
 firstValue.addEventListener(
@@ -1430,24 +1482,17 @@ polynomialInput.addEventListener(
 
 
 // ======================================================
-// GEMINI WORD PROBLEM INPUT
+// WORD PROBLEM INPUT
 // ======================================================
 
 wordProblemInput.addEventListener(
     "input",
     () => {
 
-        // Cancel previous timer
-        clearTimeout(
-            wordProblemTimer
-        );
-
-
         const question =
             wordProblemInput.value.trim();
 
 
-        // Empty
         if (!question) {
 
             resultValue.textContent =
@@ -1471,70 +1516,10 @@ wordProblemInput.addEventListener(
         }
 
 
-        // Show waiting state
         const status =
             statusElement();
 
         if (status) {
 
-            status.textContent =
-                "Waiting...";
-        }
-
-
-        /*
-           Wait 1 second after the user
-           stops typing before calling Gemini.
-        */
-
-        wordProblemTimer =
-            setTimeout(
-                () => {
-
-                    if (
-                        operation.value ===
-                        "wordProblem"
-                    ) {
-
-                        solveWordProblem();
-                    }
-
-                },
-                1000
-            );
-    }
-);
-
-
-// ======================================================
-// CTRL + ENTER = SOLVE IMMEDIATELY
-// ======================================================
-
-wordProblemInput.addEventListener(
-    "keydown",
-    event => {
-
-        if (
-            event.key === "Enter" &&
-            event.ctrlKey
-        ) {
-
-            event.preventDefault();
-
-
-            clearTimeout(
-                wordProblemTimer
-            );
-
-
-            solveWordProblem();
-        }
-    }
-);
-
-
-// ======================================================
-// INITIALIZE
-// ======================================================
-
-updateInterface();
+            s
+```
